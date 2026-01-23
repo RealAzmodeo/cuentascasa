@@ -1,0 +1,66 @@
+{
+    "taxonomy": {
+        "Vivienda": {
+            "subcategories": [
+                "Alquiler/Hipoteca",
+                "Luz",
+                "Agua",
+                "Gas",
+                "Internet",
+                "Reformas"
+            ],
+            "budget": 1000
+        },
+        "Alimentación": {
+            "subcategories": [
+                "Supermercado",
+                "Restaurantes/Bares",
+                "Delivery"
+            ],
+            "budget": 450
+        },
+        "Transporte": {
+            "subcategories": [
+                "Gasolina",
+                "Transporte Público",
+                "Taxi/Uber",
+                "Mantenimiento Coche"
+            ],
+            "budget": 150
+        },
+        "Ocio y Estilo de Vida": {
+            "subcategories": [
+                "Videojuegos",
+                "Juegos de Mesa",
+                "Cine",
+                "Suscripciones",
+                "Viajes",
+                "Compras"
+            ],
+            "budget": 200
+        },
+        "Salud y Cuidado": {
+            "subcategories": [
+                "Farmacia",
+                "Médicos",
+                "Deporte/Gimnasio"
+            ],
+            "budget": 100
+        },
+        "Finanzas": {
+            "subcategories": [
+                "Bizum",
+                "Inversiones",
+                "Impuestos",
+                "Seguros"
+            ],
+            "budget": 0
+        },
+        "Otros": {
+            "subcategories": [
+                "Varios"
+            ],
+            "budget": 50
+        }
+    }
+}
