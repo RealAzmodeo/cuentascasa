@@ -178,6 +178,27 @@ def delete():
         return jsonify({"status": "success" if success else "error", "message": message})
     except Exception as e: return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/bank/process', methods=['POST'])
+def process_bank():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"status": "error", "message": "No hay archivo"}), 400
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"status": "error", "message": "Archivo sin nombre"}), 400
+        
+        # Save temp file
+        import tempfile
+        temp = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+        file.save(temp.name)
+        temp.close()
+        
+        result = ingest_mod.process_bank_statement(temp.name)
+        os.unlink(temp.name)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/ingest_data', methods=['POST'])
 def ingest_data():
     try:

@@ -234,15 +234,66 @@ def append_to_excel(data_list, force=False):
     if dups and not force: return False, {"status": "duplicate_found", "duplicates": dups}
     return True, {"status": "success", "added": added}
 
+def reconcile_transaction(data, wb):
+    """Checks if a transaction from the bank already exists in the Excel."""
+    sheet = wb['Movimientos']
+    
+    # Standardize date
+    if isinstance(data['fecha'], str):
+        try: new_date = datetime.datetime.strptime(data['fecha'], '%Y-%m-%d').date()
+        except: 
+            try: new_date = datetime.datetime.strptime(data['fecha'], '%d/%m/%Y').date()
+            except: new_date = datetime.date.today()
+    else:
+        new_date = data['fecha'].date() if hasattr(data['fecha'], 'date') else data['fecha']
+
+    for row in sheet.iter_rows(min_row=2, values_only=True):
+        row_date, row_amount, row_type = row[0], row[1], row[4]
+        
+        if not isinstance(row_date, (datetime.datetime, datetime.date)):
+            try: row_date = datetime.datetime.strptime(str(row_date).split(' ')[0], '%Y-%m-%d').date()
+            except: continue
+        else:
+            if hasattr(row_date, 'date'): row_date = row_date.date()
+        
+        # Match logic: Same amount (approx) AND same type AND date within 3 days
+        if (abs(float(row_amount) - float(data['monto'])) < 0.01 and 
+            str(row_type).lower() == str(data['tipo']).lower() and
+            abs((new_date - row_date).days) <= 3):
+            return True, "duplicate"
+            
+    return False, "new"
+
+def process_bank_statement(filepath):
+    import bank_parser
+    transactions, error = bank_parser.parse_bbva_excel(filepath)
+    if error: return {"status": "error", "message": error}
+    
+    wb = load_workbook(EXCEL_PATH, data_only=True)
+    results = []
+    
+    for t in transactions:
+        exists, status = reconcile_transaction(t, wb)
+        t['status'] = status
+        # If new, try to auto-categorize using Gemini later or a local map
+        results.append(t)
+        
+    return {"status": "success", "transactions": results}
+
 def process_text(text, force=False):
     analysis = extract_transaction(text)
     if not analysis: return {"status": "error", "message": "Fallo de análisis AI"}
     transactions = analysis.get("transactions", [])
-    if analysis.get("intent") == "refund" and transactions and not force:
-        t = transactions[0]
-        candidates = find_candidates(t['categoria'], load_workbook(EXCEL_PATH))
-        if len(candidates) > 1: return {"status": "needs_disambiguation", "candidates": candidates, "original_intent": analysis}
-        elif len(candidates) == 1:
-            t['monto'] = candidates[0]['monto']
-            t['detalle'] = f"Reembolso: {candidates[0]['detalle']}"
-    return append_to_excel(transactions, force)[1]
+    
+    # Fix for batch processing if Gemini returns multiple
+    processed = []
+    for t in transactions:
+        if analysis.get("intent") == "refund" and not force:
+            candidates = find_candidates(t['categoria'], load_workbook(EXCEL_PATH))
+            if len(candidates) > 1: return {"status": "needs_disambiguation", "candidates": candidates, "original_intent": analysis}
+            elif len(candidates) == 1:
+                t['monto'] = candidates[0]['monto']
+                t['detalle'] = f"Reembolso: {candidates[0]['detalle']}"
+        processed.append(t)
+        
+    return append_to_excel(processed, force)[1]

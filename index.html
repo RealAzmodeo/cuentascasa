@@ -129,19 +129,57 @@
             box-shadow: var(--shadow-md);
         }
 
-        /* AI Insights Bubble */
-        .insight-banner {
-            background: var(--slate-blue);
-            color: white;
-            padding: 16px;
-            border-radius: var(--radius-md);
-            margin-bottom: 24px;
-            font-size: 0.9rem;
-            display: flex;
-            gap: 12px;
+        /* Timeline Style */
+        .timeline-item {
+            display: grid;
+            grid-template-columns: 48px 1fr auto auto;
             align-items: center;
-            line-height: 1.4;
-            box-shadow: 0 4px 15px rgba(93, 115, 126, 0.3);
+            padding: 18px 0;
+            gap: 12px;
+            border-bottom: 1px solid #EAEAEA;
+        }
+
+        .timeline-date-group {
+            margin: 24px 0 12px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #666;
+            text-transform: capitalize;
+        }
+
+        .m-icon-bank {
+            width: 36px;
+            height: 36px;
+            background: #F0F2F5;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #5D737E;
+        }
+
+        .m-balance {
+            font-size: 0.85rem;
+            color: #7A766A;
+            text-align: right;
+            min-width: 80px;
+        }
+
+        /* Drag & Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-lg);
+            padding: 40px 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.5);
+            transition: 0.3s;
+            cursor: pointer;
+            margin-bottom: 24px;
+        }
+
+        .drop-zone.active {
+            border-color: var(--vhs-red);
+            background: rgba(229, 75, 75, 0.05);
         }
 
         /* Header */
@@ -401,6 +439,31 @@
         </div>
     </div>
 
+    <!-- Tab 5: Bank / Reconciliation -->
+    <div id="view-bank" class="app-view">
+        <h2 style="margin-bottom: 8px;">Carga de Extractos</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 24px;">Sube tu Excel de BBVA para
+            conciliar movimientos automáticamente.</p>
+
+        <div id="drop-zone" class="drop-zone">
+            <i data-lucide="upload-cloud" size="40" style="margin-bottom: 12px; color: var(--text-muted);"></i>
+            <div style="font-weight: 700;">Arrastra tu archivo aquí</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">O haz clic para seleccionar</div>
+            <input type="file" id="bank-file-input" style="display: none;" accept=".xlsx">
+        </div>
+
+        <div id="bank-processing" style="display: none; text-align: center; padding: 20px;">
+            <div class="spinner"></div>
+            <p>Procesando extracto...</p>
+        </div>
+
+        <div id="bank-preview" style="display: none;">
+            <h3 style="margin-bottom: 16px;">Nuevos Movimientos</h3>
+            <div id="bank-new-list" class="card" style="padding: 0 15px;"></div>
+            <button class="btn-primary" onclick="confirmBankIngest()">CONFIRMAR CARGA</button>
+        </div>
+    </div>
+
     <!-- Settings View (Modal-like Overlay) -->
     <div id="view-settings" class="app-view"
         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-cream); z-index: 3000;">
@@ -459,13 +522,15 @@
     <!-- Bottom Nav -->
     <nav class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('home', this)"><i data-lucide="layout-dashboard"></i><span
-                class="nav-label">Elite</span></div>
-        <div class="nav-item" onclick="switchTab('search', this)"><i data-lucide="list"></i><span
-                class="nav-label">Todo</span></div>
+                class="nav-label">Resumen</span></div>
+        <div class="nav-item" onclick="switchTab('search', this)"><i data-lucide="landmark"></i><span
+                class="nav-label">Timeline</span></div>
+        <div class="nav-item" onclick="switchTab('bank', this)"><i data-lucide="file-text"></i><span
+                class="nav-label">Banco</span></div>
         <div class="nav-item" onclick="switchTab('analytics', this)"><i data-lucide="pie-chart"></i><span
-                class="nav-label">Gasto</span></div>
+                class="nav-label">Categorías</span></div>
         <div class="nav-item" onclick="switchTab('comparisons', this)"><i data-lucide="trending-up"></i><span
-                class="nav-label">Tendencia</span></div>
+                class="nav-label">Evolución</span></div>
     </nav>
 
     <script>
@@ -636,20 +701,155 @@
             const data = await res.json();
             const container = document.getElementById('search-results');
             container.innerHTML = '';
+
+            // Group by date for Timeline
+            const grouped = {};
             data.forEach(m => {
-                const div = document.createElement('div');
-                div.className = 'm-item';
-                div.innerHTML = `
-                    <div class="m-icon" style="color:var(--slate-blue)"><i data-lucide="${getIcon(m.categoria)}"></i></div>
-                    <div class="m-info">
-                        <div class="m-title">${m.tienda || m.detalle}</div>
-                        <div class="m-sub">${m.fecha} • ${m.categoria}</div>
-                    </div>
-                    <div class="m-amount" style="color:${m.tipo.toLowerCase() === 'gasto' ? 'inherit' : 'var(--sage-green)'}">${m.monto}€</div>
-                `;
-                container.appendChild(div);
+                const d = m.fecha;
+                if (!grouped[d]) grouped[d] = [];
+                grouped[d].push(m);
+            });
+
+            Object.entries(grouped).forEach(([date, moves]) => {
+                const groupHeader = document.createElement('div');
+                groupHeader.className = 'timeline-date-group';
+                groupHeader.textContent = formatDateHuman(date);
+                container.appendChild(groupHeader);
+
+                moves.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = 'timeline-item';
+                    div.innerHTML = `
+                        <div class="m-icon-bank"><i data-lucide="${getIcon(m.categoria)}"></i></div>
+                        <div class="m-info">
+                            <div class="m-title" style="font-size:0.95rem;">${m.tienda || m.detalle}</div>
+                            <div class="m-sub" style="font-size:0.8rem;">${m.categoria}</div>
+                        </div>
+                        <div class="m-amount" style="font-size:1rem; color:${m.tipo.toLowerCase() === 'gasto' ? 'inherit' : 'var(--sage-green)'}">
+                            ${m.tipo.toLowerCase() === 'gasto' ? '-' : '+'}${m.monto.toLocaleString('es-ES')}€
+                        </div>
+                        <div class="m-balance">${m.saldo ? m.saldo.toLocaleString('es-ES') + '€' : ''}</div>
+                    `;
+                    container.appendChild(div);
+                });
             });
             lucide.createIcons();
+        }
+
+        function formatDateHuman(dateStr) {
+            const date = new Date(dateStr);
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+
+            if (date.toDateString() === today.toDateString()) return 'Hoy';
+            if (date.toDateString() === yesterday.toDateString()) return 'Ayer';
+
+            const options = { day: 'numeric', month: 'short', year: 'numeric' };
+            return date.toLocaleDateString('es-ES', options);
+        }
+
+        // Bank Upload & Recon Logic
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('bank-file-input');
+        let pendingTransactions = [];
+
+        dropZone.onclick = () => fileInput.click();
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('active'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('active');
+        dropZone.ondrop = (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('active');
+            if (e.dataTransfer.files.length) handleBankFile(e.dataTransfer.files[0]);
+        };
+        fileInput.onchange = (e) => {
+            if (e.target.files.length) handleBankFile(e.target.files[0]);
+        };
+
+        async function handleBankFile(file) {
+            document.getElementById('bank-processing').style.display = 'block';
+            document.getElementById('bank-preview').style.display = 'none';
+            document.getElementById('drop-zone').style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('http://localhost:5000/bank/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    renderBankPreview(data.transactions);
+                } else {
+                    alert('Error: ' + data.message);
+                    resetBank();
+                }
+            } catch (e) {
+                alert('Error de conexión');
+                resetBank();
+            } finally {
+                document.getElementById('bank-processing').style.display = 'none';
+            }
+        }
+
+        function renderBankPreview(transactions) {
+            pendingTransactions = transactions;
+            document.getElementById('bank-preview').style.display = 'block';
+            const list = document.getElementById('bank-new-list');
+            list.innerHTML = '';
+
+            transactions.forEach((t, i) => {
+                const div = document.createElement('div');
+                div.className = 'timeline-item';
+                div.style.opacity = t.status === 'duplicate' ? '0.5' : '1';
+                div.innerHTML = `
+                    <div class="m-icon-bank"><i data-lucide="${t.status === 'duplicate' ? 'copy' : 'plus'}"></i></div>
+                    <div class="m-info">
+                        <div class="m-title" style="font-size:0.85rem;">${t.detalle}</div>
+                        <div class="m-sub">${formatDateHuman(t.fecha)} ${t.status === 'duplicate' ? '• YA INGRESADO' : ''}</div>
+                    </div>
+                    <div class="m-amount" style="font-size:0.95rem;">${t.tipo === 'Gasto' ? '-' : '+'}${t.monto}€</div>
+                    <input type="checkbox" ${t.status === 'new' ? 'checked' : ''} onchange="pendingTransactions[${i}].selected = this.checked">
+                `;
+                // Set initial selection
+                pendingTransactions[i].selected = t.status === 'new';
+                list.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        async function confirmBankIngest() {
+            const toAdd = pendingTransactions.filter(t => t.selected);
+            if (!toAdd.length) return alert('No hay movimientos seleccionados');
+
+            // Map back to standard format for ingestion
+            const mapped = toAdd.map(t => ({
+                fecha: t.fecha,
+                monto: t.monto,
+                categoria: "Pendiente", // We can add AI categorization here later
+                detalle: t.detalle,
+                tipo: t.tipo,
+                tienda: t.tienda
+            }));
+
+            await fetch('http://localhost:5000/ingest_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transactions: mapped })
+            });
+
+            alert(`¡${toAdd.length} movimientos añadidos con éxito! Ahora puedes categorizarlos en el Timeline.`);
+            resetBank();
+            refreshData();
+        }
+
+        function resetBank() {
+            document.getElementById('bank-preview').style.display = 'none';
+            document.getElementById('drop-zone').style.display = 'block';
+            document.getElementById('bank-processing').style.display = 'none';
+            fileInput.value = '';
         }
 
         // Settings Logic
