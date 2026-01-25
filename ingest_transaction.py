@@ -2,7 +2,7 @@ import os
 import sys
 import json
 import datetime
-from google.generativeai import GenerativeModel, configure
+from google import genai
 from openpyxl import load_workbook
 
 import time
@@ -13,8 +13,8 @@ EXCEL_PATH = 'd:/Proyectos/Antigravity Offline/Cuentas-Casa/Presupuesto-Anual-20
 CATEGORIES = ['Juguetes', 'Supermercado', 'Bizum', 'Juegos de Mesa', 'Restaurants', 'Videojuegos', 'Tarjeta Revolut', 'Tarjeta Credito', 'Inversiones', 'Zapatillas', 'Taxi', 'Stich', 'Otros']
 MODEL_NAME = 'gemini-2.5-flash'
 
-configure(api_key=API_KEY)
-model = GenerativeModel(MODEL_NAME)
+# Initialize Client
+client = genai.Client(api_key=API_KEY)
 
 def extract_transaction(text, retries=3):
     prompt = f"""
@@ -39,7 +39,7 @@ def extract_transaction(text, retries=3):
     
     for i in range(retries):
         try:
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
             data = json.loads(response.text.replace('```json', '').replace('```', '').strip())
             return data
         except Exception as e:

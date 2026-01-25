@@ -64,6 +64,26 @@
             scrollbar-width: none;
         }
 
+        #view-bank {
+            display: none;
+            flex-direction: column;
+            padding-bottom: 20px;
+        }
+
+        #view-bank.active {
+            display: flex;
+        }
+
+        .badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: rgba(93, 115, 126, 0.1);
+            color: var(--slate-blue);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
         .app-view::-webkit-scrollbar {
             display: none;
         }
@@ -132,19 +152,63 @@
         /* Timeline Style */
         .timeline-item {
             display: grid;
-            grid-template-columns: 48px 1fr auto auto;
+            grid-template-columns: 48px 1fr auto;
             align-items: center;
-            padding: 18px 0;
+            padding: 16px;
             gap: 12px;
-            border-bottom: 1px solid #EAEAEA;
+            background: white;
+            border-radius: var(--radius-md);
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            transition: transform 0.2s;
+        }
+
+        .timeline-item:active {
+            transform: scale(0.98);
         }
 
         .timeline-date-group {
-            margin: 24px 0 12px;
-            font-size: 0.85rem;
+            margin: 20px 0 10px 4px;
+            font-size: 0.8rem;
             font-weight: 700;
-            color: #666;
-            text-transform: capitalize;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .month-header {
+            font-size: 0.85rem;
+            font-weight: 800;
+            color: white;
+            background: var(--text-charcoal);
+            margin: 32px -20px 16px -20px;
+            padding: 10px 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: sticky;
+            top: 175px;
+            /* Adjust for card + search bar height */
+            z-index: 10;
+        }
+
+        .timeline-date-group {
+            margin-bottom: 24px;
+        }
+
+        .timeline-date-header {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin: 20px 0 10px;
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 215px;
+            /* Lower than month header */
+            background: var(--bg-cream);
+            padding: 5px 0;
+            z-index: 5;
         }
 
         .m-icon-bank {
@@ -163,6 +227,26 @@
             color: #7A766A;
             text-align: right;
             min-width: 80px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--vhs-red);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Drag & Drop Zone */
@@ -198,27 +282,135 @@
 
         /* Budget Progress */
         .budget-row {
-            margin-top: 15px;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: white;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            transition: 0.3s;
+        }
+
+        .budget-row:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border-color: var(--retro-orange);
         }
 
         .budget-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.8rem;
-            font-weight: 600;
-            margin-bottom: 6px;
+            display: grid;
+            grid-template-columns: 32px 1fr auto;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .cat-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--text-charcoal);
+        }
+
+        .budget-stats {
+            text-align: right;
+            font-family: 'JetBrains Mono', monospace;
+            /* For aligned numbers if possible, otherwise Lexend is fine */
+        }
+
+        .spent-amount {
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .total-amount {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
         }
 
         .progress-container {
-            height: 10px;
-            background: var(--border);
-            border-radius: 10px;
+            height: 12px;
+            background: #EFEFEF;
+            border-radius: 20px;
             overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.03);
         }
 
         .progress-fill {
             height: 100%;
-            transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            border-radius: 20px;
+            transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent);
+        }
+
+        /* Budget Details (Expandable) */
+        .budget-details {
+            display: none;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px dashed var(--border);
+            animation: fadeInDetails 0.3s ease-out;
+            max-height: 350px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
+        .budget-details::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .budget-details::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        @keyframes fadeInDetails {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .detailed-expense {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            font-size: 0.8rem;
+        }
+
+        .detailed-expense .exp-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-charcoal);
+            font-weight: 500;
+        }
+
+        .detailed-expense .exp-date {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            background: var(--bg-cream);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .detailed-expense .exp-amount {
+            font-weight: 700;
+            color: var(--text-charcoal);
         }
 
         /* Lists */
@@ -346,23 +538,97 @@
             cursor: pointer;
         }
 
-        /* Settings management */
         .cat-config-item {
-            padding: 16px;
+            padding: 24px;
             background: white;
-            border: 2px solid var(--border);
-            border-radius: var(--radius-md);
-            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+        }
+
+        .cat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
         }
 
         .sub-tag {
-            display: inline-block;
-            padding: 4px 10px;
-            background: var(--bg-cream);
-            border-radius: 50px;
-            font-size: 0.7rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: #F8F9FA;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 500;
             margin: 4px;
             border: 1px solid var(--border);
+            color: var(--text-charcoal);
+            transition: 0.2s;
+        }
+
+        .sub-tag:hover {
+            border-color: var(--retro-orange);
+            background: white;
+        }
+
+        .sub-tag i {
+            cursor: pointer;
+            opacity: 0.4;
+            transition: 0.2s;
+        }
+
+        .sub-tag i:hover {
+            opacity: 1;
+            color: var(--vhs-red);
+        }
+
+        .budget-label {
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        /* Filter System */
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 0;
+            scrollbar-width: none;
+            margin-top: 10px;
+        }
+
+        .filter-bar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .filter-chip {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: 0.2s;
+            color: var(--text-muted);
+        }
+
+        .filter-chip.active {
+            background: var(--text-charcoal);
+            color: white;
+            border-color: var(--text-charcoal);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -395,7 +661,15 @@
             </div>
         </section>
 
-        <h2 style="font-size: 1.1rem; margin-bottom: 16px;">Presupuestos del Mes</h2>
+        <h2
+            style="font-size: 1.1rem; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <span>Presupuestos</span>
+            <select id="month-selector" class="form-input"
+                style="width: auto; padding: 4px 12px; font-size: 0.8rem; height: 32px;"
+                onchange="changeMonth(this.value)">
+                <!-- Options populated dynamically -->
+            </select>
+        </h2>
         <div id="budget-list">
             <!-- Budgets progress go here -->
         </div>
@@ -403,23 +677,53 @@
 
     <!-- Tab 2: Activity/Search -->
     <div id="view-search" class="app-view">
-        <div style="position: sticky; top: 0; background: var(--bg-cream); padding: 10px 0 20px; z-index: 100;">
-            <h2 style="margin-bottom: 15px;">Historial Completo</h2>
+        <div
+            style="position: sticky; top: -25px; background: var(--bg-cream); padding: 10px 0 20px; z-index: 100; border-bottom: 1px solid rgba(0,0,0,0.05); margin: -25px -20px 20px; padding: 35px 20px 20px;">
+            <section class="card"
+                style="background: var(--text-charcoal); color: white; margin-bottom: 20px; padding: 15px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+                <div
+                    style="font-size: 0.7rem; font-weight: 600; color: rgba(255,255,255,0.6); text-transform: uppercase;">
+                    Balance Historial</div>
+                <div style="font-size: 1.8rem; font-weight: 700; margin: 2px 0;" id="timeline-balance">€0.00</div>
+                <div style="font-size: 0.8rem; display:flex; gap:12px; opacity: 0.9;">
+                    <span id="timeline-income" style="color:var(--sage-green)">+€0</span>
+                    <span id="timeline-expense" style="color:var(--vhs-red)">-€0</span>
+                </div>
+            </section>
             <div style="position: relative;">
                 <i data-lucide="search"
                     style="position: absolute; left: 16px; top: 16px; color: var(--text-muted);"></i>
                 <input type="text" id="searchInput" class="form-input" style="padding-left: 50px;"
-                    placeholder="Buscar tienda, categoría o producto...">
+                    placeholder="Buscar tienda o detalle...">
+            </div>
+
+            <div class="filter-bar" id="category-filters">
+                <div class="filter-chip active" onclick="setCategoryFilter(null, this)">Todas</div>
+                <!-- Generated dynamically -->
+            </div>
+
+            <div class="filter-bar" id="amount-filters">
+                <div class="filter-chip active" onclick="setAmountFilter(0, this)">Todo €</div>
+                <div class="filter-chip" onclick="setAmountFilter(50, this)">> 50€</div>
+                <div class="filter-chip" onclick="setAmountFilter(100, this)">> 100€</div>
+                <div class="filter-chip" onclick="setAmountFilter(500, this)">> 500€</div>
             </div>
         </div>
-        <div id="search-results" class="card" style="padding: 0 20px;">
+        <div id="search-results" style="padding-bottom: 20px;">
             <!-- Movements -->
         </div>
     </div>
 
     <!-- Tab 3: Detailed Analytics -->
     <div id="view-analytics" class="app-view">
-        <h2 style="margin-bottom: 24px;">Distribución de Gastos</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 style="margin: 0;">Distribución</h2>
+            <select id="month-selector-ana" class="form-input"
+                style="width: auto; padding: 4px 12px; font-size: 0.8rem; height: 32px;"
+                onchange="changeMonth(this.value)">
+                <!-- Options populated dynamically -->
+            </select>
+        </div>
         <div class="card" style="height: 280px; display: flex; align-items: center; justify-content: center;">
             <canvas id="anaChart"></canvas>
         </div>
@@ -457,10 +761,44 @@
             <p>Procesando extracto...</p>
         </div>
 
-        <div id="bank-preview" style="display: none;">
-            <h3 style="margin-bottom: 16px;">Nuevos Movimientos</h3>
-            <div id="bank-new-list" class="card" style="padding: 0 15px;"></div>
-            <button class="btn-primary" onclick="confirmBankIngest()">CONFIRMAR CARGA</button>
+        <div id="bank-preview" style="display: none; height: 100%; flex-direction: column;">
+            <!-- Header Fixed -->
+            <div
+                style="flex-shrink: 0; padding-bottom: 16px; border-bottom: 2px solid var(--border); margin-bottom: 16px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin:0;">Nuevos Movimientos</h3>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <label
+                            style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer; background: white; padding: 10px 14px; border-radius: 50px; border: 1px solid var(--border);">
+                            <input type="checkbox" id="select-all-bank" onchange="toggleAllTransactions(this.checked)">
+                            MARCAR TODOS
+                        </label>
+                        <button class="btn-primary" style="width: auto; padding: 10px 20px; font-size: 0.8rem;"
+                            onclick="confirmBankIngest()">CONFIRMAR CARGA</button>
+                    </div>
+                </div>
+
+                <!-- Arqueo banner disabled per user request -->
+                <div id="bank-sync-info" class="insight-banner"
+                    style="background: var(--sage-green); margin-top: 16px; margin-bottom: 0; display:none !important;">
+                    <i data-lucide="info"></i>
+                    <div style="flex:1;">
+                        <div style="font-size: 0.7rem; opacity: 0.8; text-transform: uppercase;">Ajuste de Arqueo
+                            Sugerido
+                        </div>
+                        <div id="sync-text">Saldo App: €0 | Banco: €0</div>
+                    </div>
+                    <button class="btn-primary"
+                        style="width: auto; background: white; color: var(--sage-green); padding: 8px 12px; font-size: 0.7rem;"
+                        onclick="syncBalance()">AJUSTAR</button>
+                </div>
+            </div>
+
+            <!-- Scrollable Area -->
+            <div id="bank-new-list-container"
+                style="flex: 1; overflow-y: auto; border: 2px solid var(--border); border-radius: var(--radius-md); background: white; padding: 0 15px;">
+                <div id="bank-new-list"></div>
+            </div>
         </div>
     </div>
 
@@ -479,6 +817,12 @@
             </div>
             <button class="btn-primary" style="background:var(--text-charcoal); margin-top: 20px;"
                 onclick="addCategory()">+ NUEVA CATEGORÍA</button>
+            <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);">
+                <p style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 700;">ZONA
+                    DEBUG (TEMPORAL)</p>
+                <button class="btn-primary" style="background:var(--vhs-red); opacity: 0.8;"
+                    onclick="debugClearActivity()">BORRAR TODA LA ACTIVIDAD</button>
+            </div>
         </div>
     </div>
 
@@ -537,6 +881,7 @@
         lucide.createIcons();
         let currentConfig = null;
         let currentAnalytics = null;
+        let selectedMonthKey = null;
         let charts = {};
 
         async function init() {
@@ -568,39 +913,180 @@
             const summary = await sumRes.json();
             currentAnalytics = await anaRes.json();
 
+            if (!selectedMonthKey) {
+                selectedMonthKey = currentAnalytics.current_month_key;
+            }
+
+            // Update selectors
+            populateMonthSelectors();
+
             // Home Updates
+            const currentMonthData = currentAnalytics.months[selectedMonthKey] || { total: 0, categories: {} };
             document.getElementById('home-balance').textContent = `€${summary.savings.toLocaleString('es-ES')}`;
             document.getElementById('home-income').textContent = `+€${summary.total_income.toLocaleString('es-ES')}`;
-            document.getElementById('home-expense').textContent = `-€${summary.total_expense.toLocaleString('es-ES')}`;
+            document.getElementById('home-expense').textContent = `-€${currentMonthData.total.toLocaleString('es-ES')}`;
+
+            // Timeline Updates
+            const tBalance = document.getElementById('timeline-balance');
+            if (tBalance) {
+                tBalance.textContent = `€${summary.savings.toLocaleString('es-ES')}`;
+                document.getElementById('timeline-income').textContent = `+€${summary.total_income.toLocaleString('es-ES')}`;
+                document.getElementById('timeline-expense').textContent = `-€${summary.total_expense.toLocaleString('es-ES')}`;
+            }
 
             renderBudgets();
+            renderCategoryFilters();
             if (document.getElementById('view-search').classList.contains('active')) search();
+        }
+
+        function populateMonthSelectors() {
+            const selectors = ['month-selector', 'month-selector-ana'];
+            selectors.forEach(id => {
+                const sel = document.getElementById(id);
+                if (!sel) return;
+                const current = sel.value;
+                sel.innerHTML = '';
+                currentAnalytics.sorted_months.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = formatMonthKey(m);
+                    if (m === selectedMonthKey) opt.selected = true;
+                    sel.appendChild(opt);
+                });
+            });
+        }
+
+        function formatMonthKey(key) {
+            const [y, m] = key.split('-');
+            const d = new Date(y, m - 1);
+            return d.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }).toUpperCase();
+        }
+
+        function changeMonth(m) {
+            selectedMonthKey = m;
+            document.getElementById('month-selector').value = m;
+            document.getElementById('month-selector-ana').value = m;
+            refreshData();
+        }
+
+        let activeFilters = {
+            category: null,
+            minAmount: 0
+        };
+
+        function renderCategoryFilters() {
+            const container = document.getElementById('category-filters');
+            if (!container) return;
+            const currentCat = activeFilters.category;
+            container.innerHTML = `<div class="filter-chip ${!currentCat ? 'active' : ''}" onclick="setCategoryFilter(null, this)">Todas</div>`;
+
+            Object.keys(currentConfig.taxonomy).forEach(cat => {
+                const chip = document.createElement('div');
+                chip.className = `filter-chip ${currentCat === cat ? 'active' : ''}`;
+                chip.textContent = cat;
+                chip.onclick = () => setCategoryFilter(cat, chip);
+                container.appendChild(chip);
+            });
+        }
+
+        function setCategoryFilter(cat, el) {
+            document.querySelectorAll('#category-filters .filter-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            activeFilters.category = cat;
+            search();
+        }
+
+        function setAmountFilter(min, el) {
+            document.querySelectorAll('#amount-filters .filter-chip').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            activeFilters.minAmount = min;
+            search();
         }
 
         function renderBudgets() {
             const list = document.getElementById('budget-list');
             list.innerHTML = '';
-            const cats = currentAnalytics.current_month.categories;
+            const currentMonthData = currentAnalytics.months[selectedMonthKey] || { categories: {} };
+            const cats = currentMonthData.categories;
+
+            // Get previous month index for trend
+            const months = currentAnalytics.sorted_months;
+            const idx = months.indexOf(selectedMonthKey);
+            const prevMonthKey = idx > 0 ? months[idx - 1] : null;
+            const prevMonthData = prevMonthKey ? currentAnalytics.months[prevMonthKey] : null;
 
             Object.entries(currentConfig.taxonomy).forEach(([name, cfg]) => {
-                if (cfg.budget === 0) return;
+                if (cfg.budget === 0 || name === 'Ingresos') return;
                 const spent = cats[name] || 0;
+                const prevSpent = prevMonthData ? (prevMonthData.categories[name] || 0) : 0;
+
+                const diff = spent - prevSpent;
+                const trendIcon = diff > 0 ? 'trending-up' : 'trending-down';
+                const trendColor = diff > 0 ? 'var(--vhs-red)' : 'var(--sage-green)';
+
                 const perc = Math.min((spent / cfg.budget * 100), 100).toFixed(0);
-                const color = perc > 90 ? 'var(--vhs-red)' : (perc > 70 ? 'var(--retro-orange)' : 'var(--sage-green)');
+                const isExceeded = spent > cfg.budget;
+
+                // Vintage colors logic
+                let color = 'var(--sage-green)'; // Safe
+                if (perc > 70) color = 'var(--mustard)'; // Warning
+                if (isExceeded) color = 'var(--vhs-red)'; // Exceeded
 
                 const div = document.createElement('div');
                 div.className = 'budget-row';
+                div.style.cursor = 'pointer';
+                div.onclick = (e) => {
+                    const details = div.querySelector('.budget-details');
+                    const isVisible = details.style.display === 'block';
+                    details.style.display = isVisible ? 'none' : 'block';
+                    // Optional: rotation of chevron if added
+                };
+
+                const topExp = currentMonthData.top_transactions[name] || [];
+
                 div.innerHTML = `
                     <div class="budget-header">
-                        <span>${name}</span>
-                        <span>€${spent.toLocaleString('es-ES')} / €${cfg.budget}</span>
+                        <div class="m-icon-bank" style="width:32px; height:32px; background:${color}15; color:${color}">
+                            <i data-lucide="${getIcon(name)}" size="16"></i>
+                        </div>
+                        <div style="flex:1;">
+                            <div class="cat-name">${name}</div>
+                            ${prevMonthKey ? `
+                                <div style="font-size:0.6rem; color:var(--text-muted); display:flex; align-items:center; gap:2px;">
+                                    <i data-lucide="${trendIcon}" size="10" style="color:${trendColor}"></i>
+                                    vs mes pasado: €${Math.abs(diff).toFixed(0)}
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="budget-stats" style="display:flex; align-items:center; gap:8px;">
+                            <div style="text-align:right;">
+                                <span class="spent-amount" style="color:${isExceeded ? 'var(--vhs-red)' : 'inherit'}">€${spent.toLocaleString('es-ES', { minimumFractionDigits: 0 })}</span>
+                                <span class="total-amount">/ €${cfg.budget}</span>
+                            </div>
+                            <i data-lucide="chevron-down" size="14" style="opacity:0.3;"></i>
+                        </div>
                     </div>
                     <div class="progress-container">
                         <div class="progress-fill" style="width:${perc}%; background:${color}"></div>
                     </div>
+                    
+                    <div class="budget-details">
+                        <div style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Desglose de Gastos (Mayor a Menor)</div>
+                        ${topExp.map(t => `
+                            <div class="detailed-expense">
+                                <div class="exp-info">
+                                    <span class="exp-date">${t.fecha}</span>
+                                    <span>${t.detalle}</span>
+                                </div>
+                                <div class="exp-amount">€${t.monto.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</div>
+                            </div>
+                        `).join('')}
+                        ${isExceeded ? `<div style="font-size:0.6rem; font-weight:800; color:var(--vhs-red); text-transform:uppercase; margin-top:12px; display:flex; align-items:center; gap:4px; padding-top:8px; border-top:1px solid rgba(229, 75, 75, 0.1);"><i data-lucide="alert-octagon" size="10"></i> Límite excedido por €${(spent - cfg.budget).toFixed(2)}</div>` : ''}
+                    </div>
                 `;
                 list.appendChild(div);
             });
+            lucide.createIcons();
         }
 
         async function fetchInsights() {
@@ -629,8 +1115,9 @@
         }
 
         function renderAnalytics() {
-            const cats = Object.entries(currentAnalytics.current_month.categories).sort((a, b) => b[1] - a[1]);
-            const total = Object.values(currentAnalytics.current_month.categories).reduce((a, b) => a + b, 0);
+            const currentMonthData = currentAnalytics.months[selectedMonthKey] || { categories: {} };
+            const cats = Object.entries(currentMonthData.categories).sort((a, b) => b[1] - a[1]);
+            const total = Object.values(currentMonthData.categories).reduce((a, b) => a + b, 0);
 
             const ctx = document.getElementById('anaChart').getContext('2d');
             if (charts.ana) charts.ana.destroy();
@@ -684,7 +1171,8 @@
             });
 
             const advice = document.getElementById('comp-advice');
-            const mom = currentAnalytics.mom_growth;
+            const latest = hist[hist.length - 1];
+            const mom = latest ? latest.growth : 0;
             advice.innerHTML = `
                 <div style="font-weight:700; font-size:1.2rem; color:${mom > 0 ? 'var(--vhs-red)' : 'var(--sage-green)'}">
                     ${mom > 0 ? '↑' : '↓'} ${Math.abs(mom).toFixed(1)}% vs mes pasado
@@ -698,39 +1186,73 @@
         async function search() {
             const q = document.getElementById('searchInput').value;
             const res = await fetch(`http://localhost:5000/search?q=${encodeURIComponent(q)}`);
-            const data = await res.json();
+            let data = await res.json();
+
+            if (activeFilters.category) {
+                data = data.filter(m => m.categoria === activeFilters.category);
+            }
+            if (activeFilters.minAmount > 0) {
+                data = data.filter(m => m.monto >= activeFilters.minAmount);
+            }
+
             const container = document.getElementById('search-results');
             container.innerHTML = '';
 
-            // Group by date for Timeline
-            const grouped = {};
+            // 1. Sort Data descending (Latest First)
+            data.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+            // 2. Hierarchical Grouping: Month > Day
+            const tree = {};
             data.forEach(m => {
-                const d = m.fecha;
-                if (!grouped[d]) grouped[d] = [];
-                grouped[d].push(m);
+                const date = new Date(m.fecha);
+                const monthKey = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                const dayKey = m.fecha;
+
+                if (!tree[monthKey]) tree[monthKey] = {};
+                if (!tree[monthKey][dayKey]) tree[monthKey][dayKey] = [];
+
+                tree[monthKey][dayKey].push(m);
             });
 
-            Object.entries(grouped).forEach(([date, moves]) => {
-                const groupHeader = document.createElement('div');
-                groupHeader.className = 'timeline-date-group';
-                groupHeader.textContent = formatDateHuman(date);
-                container.appendChild(groupHeader);
+            // 3. Render Tree (Maintain order from sorted data)
+            const uniqueMonths = [...new Set(data.map(m => new Date(m.fecha).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })))];
 
-                moves.forEach(m => {
-                    const div = document.createElement('div');
-                    div.className = 'timeline-item';
-                    div.innerHTML = `
-                        <div class="m-icon-bank"><i data-lucide="${getIcon(m.categoria)}"></i></div>
-                        <div class="m-info">
-                            <div class="m-title" style="font-size:0.95rem;">${m.tienda || m.detalle}</div>
-                            <div class="m-sub" style="font-size:0.8rem;">${m.categoria}</div>
-                        </div>
-                        <div class="m-amount" style="font-size:1rem; color:${m.tipo.toLowerCase() === 'gasto' ? 'inherit' : 'var(--sage-green)'}">
-                            ${m.tipo.toLowerCase() === 'gasto' ? '-' : '+'}${m.monto.toLocaleString('es-ES')}€
-                        </div>
-                        <div class="m-balance">${m.saldo ? m.saldo.toLocaleString('es-ES') + '€' : ''}</div>
-                    `;
-                    container.appendChild(div);
+            uniqueMonths.forEach(month => {
+                const mHeader = document.createElement('div');
+                mHeader.className = 'month-header';
+                mHeader.textContent = month;
+                container.appendChild(mHeader);
+
+                const daysInMonth = tree[month];
+                // Days are already sorted because data was sorted
+                const uniqueDays = [...new Set(data.filter(m => new Date(m.fecha).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) === month).map(m => m.fecha))];
+
+                uniqueDays.forEach(date => {
+                    const groupHeader = document.createElement('div');
+                    groupHeader.className = 'timeline-date-group';
+                    groupHeader.textContent = formatDateHuman(date);
+                    container.appendChild(groupHeader);
+
+                    daysInMonth[date].forEach(m => {
+                        const div = document.createElement('div');
+                        div.className = 'timeline-item';
+                        div.innerHTML = `
+                            <div class="m-icon-bank"><i data-lucide="${getIcon(m.categoria)}"></i></div>
+                            <div class="m-info">
+                                <div class="m-title" style="font-size:1rem;">${m.tienda || m.detalle}</div>
+                                <div class="m-sub" style="font-size:0.8rem;">${m.categoria}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="m-amount" style="font-size:1.1rem; font-weight:700; color:${m.tipo.toLowerCase() === 'gasto' ? 'inherit' : 'var(--sage-green)'}">
+                                    ${m.tipo.toLowerCase() === 'gasto' ? '-' : '+'}${m.monto.toLocaleString('es-ES')}€
+                                </div>
+                                <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 600; margin-top: 2px;">
+                                    SALDO: €${(m.saldo || 0).toLocaleString('es-ES')}
+                                </div>
+                            </div>
+                        `;
+                        container.appendChild(div);
+                    });
                 });
             });
             lucide.createIcons();
@@ -745,8 +1267,10 @@
             if (date.toDateString() === today.toDateString()) return 'Hoy';
             if (date.toDateString() === yesterday.toDateString()) return 'Ayer';
 
-            const options = { day: 'numeric', month: 'short', year: 'numeric' };
-            return date.toLocaleDateString('es-ES', options);
+            // Example: "Sábado, 24 de Enero"
+            const options = { weekday: 'long', day: 'numeric', month: 'long' };
+            let formatted = date.toLocaleDateString('es-ES', options);
+            return formatted.charAt(0).toUpperCase() + formatted.slice(1);
         }
 
         // Bank Upload & Recon Logic
@@ -781,6 +1305,8 @@
                 });
                 const data = await res.json();
                 if (data.status === 'success') {
+                    // Initialize selection state: new entries selected by default
+                    data.transactions.forEach(t => t.selected = (t.status === 'new'));
                     renderBankPreview(data.transactions);
                 } else {
                     alert('Error: ' + data.message);
@@ -794,27 +1320,117 @@
             }
         }
 
+        let lastBankBalance = 0;
+        let appBalance = 0;
+
+        function checkBalanceDiscrepancy(transactions) {
+            if (transactions.length === 0) return;
+
+            // Find the transaction with the latest date as the absolute truth
+            // BBVA Excel is usually sorted descending by date
+            const latestTransaction = transactions.reduce((prev, current) => {
+                return (new Date(current.fecha) >= new Date(prev.fecha)) ? current : prev;
+            });
+
+            lastBankBalance = latestTransaction.saldo_banco;
+
+            // Get current app balance from the summary label
+            const balText = document.getElementById('home-balance').textContent.replace('€', '').replace(/\./g, '').replace(',', '.').trim();
+            appBalance = parseFloat(balText);
+
+            const diff = Math.abs(appBalance - lastBankBalance);
+            console.log(`DEBUG: AppBalance: ${appBalance}, BankBalance: ${lastBankBalance}, Diff: ${diff}`);
+
+            if (diff > 0.05) {
+                document.getElementById('bank-sync-info').style.display = 'flex';
+                document.getElementById('sync-text').innerHTML = `App: <b>€${appBalance.toLocaleString('es-ES')}</b> | Real (Banco): <b>€${lastBankBalance.toLocaleString('es-ES')}</b>`;
+            } else {
+                document.getElementById('bank-sync-info').style.display = 'none';
+            }
+        }
+
+        async function syncBalance() {
+            const diff = lastBankBalance - appBalance;
+            if (Math.abs(diff) < 0.01) return;
+
+            const confirmSync = confirm(`¿Ajustar saldo? Se creará un movimiento de ${diff > 0 ? 'Ingreso' : 'Gasto'} por €${Math.abs(diff).toLocaleString('es-ES')} para igualar al banco.`);
+            if (!confirmSync) return;
+
+            const adjustment = {
+                fecha: new Date().toISOString().split('T')[0],
+                monto: Math.abs(diff),
+                categoria: "Otros",
+                subcategoria: "Ajuste de Saldo",
+                detalle: "Ajuste Automático de Arqueo",
+                tipo: diff > 0 ? "Ingreso" : "Gasto",
+                tienda: "Sistema"
+            };
+
+            await fetch('http://localhost:5000/ingest_data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ transactions: [adjustment] })
+            });
+
+            document.getElementById('bank-sync-info').style.display = 'none';
+            await refreshData();
+            alert('Saldo sincronizado con éxito.');
+        }
+
+        function toggleAllTransactions(checked) {
+            pendingTransactions.forEach((t, i) => {
+                t.selected = checked;
+            });
+            renderBankPreview(pendingTransactions);
+        }
+
         function renderBankPreview(transactions) {
             pendingTransactions = transactions;
-            document.getElementById('bank-preview').style.display = 'block';
+            document.getElementById('bank-preview').style.display = 'flex';
             const list = document.getElementById('bank-new-list');
             list.innerHTML = '';
 
+            if (transactions.length === 0) {
+                list.innerHTML = `
+                    <div style="text-align:center; padding: 40px 20px; color: var(--text-muted);">
+                        <i data-lucide="alert-triangle" size="48" style="margin-bottom:15px; opacity:0.5;"></i>
+                        <div style="font-weight:700; font-size:1rem; margin-bottom:5px;">No se encontraron movimientos</div>
+                        <p style="font-size:0.8rem; line-height:1.4;">Comprueba que el archivo Excel de BBVA contiene datos y que las cabeceras son visibles.</p>
+                        <button class="btn-primary" style="width:auto; margin-top:20px; background:var(--text-charcoal); padding:10px 20px;" onclick="resetBank()">INTENTAR DE NUEVO</button>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
             transactions.forEach((t, i) => {
+                const isSelected = t.selected;
                 const div = document.createElement('div');
                 div.className = 'timeline-item';
-                div.style.opacity = t.status === 'duplicate' ? '0.5' : '1';
+                div.style.padding = '14px 0';
+                // Less aggressive opacity for duplicates to make them feel selectable
+                div.style.opacity = t.status === 'duplicate' && !isSelected ? '0.5' : '1';
+
                 div.innerHTML = `
-                    <div class="m-icon-bank"><i data-lucide="${t.status === 'duplicate' ? 'copy' : 'plus'}"></i></div>
-                    <div class="m-info">
-                        <div class="m-title" style="font-size:0.85rem;">${t.detalle}</div>
-                        <div class="m-sub">${formatDateHuman(t.fecha)} ${t.status === 'duplicate' ? '• YA INGRESADO' : ''}</div>
+                    <div class="m-icon-bank" style="background: ${t.status === 'duplicate' ? '#F0F0F0' : 'rgba(136, 158, 129, 0.1)'}">
+                        <i data-lucide="${t.status === 'duplicate' ? 'alert-circle' : 'plus'}" size="16"></i>
                     </div>
-                    <div class="m-amount" style="font-size:0.95rem;">${t.tipo === 'Gasto' ? '-' : '+'}${t.monto}€</div>
-                    <input type="checkbox" ${t.status === 'new' ? 'checked' : ''} onchange="pendingTransactions[${i}].selected = this.checked">
+                    <div class="m-info">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div class="m-title" style="font-size:0.85rem; font-weight:700;">${t.tienda}</div>
+                            <span class="badge" style="background:${t.status === 'duplicate' ? '#BBB' : 'var(--sage-green)'}">BBVA</span>
+                        </div>
+                        <div class="m-sub" style="font-size:0.7rem; color:#999; line-height:1.2;">
+                            ${formatDateHuman(t.fecha)} • ${t.status === 'duplicate' ? '<span style="color:var(--retro-orange); font-weight:700;">POSIBLE DUPLICADO</span>' : (t.categoria || 'Nueva')}
+                        </div>
+                    </div>
+                    <div class="m-amount" style="font-size:0.9rem; font-weight:700; color: ${t.tipo === 'Gasto' ? '#2C2C2C' : 'var(--sage-green)'}">
+                        ${t.tipo === 'Gasto' ? '-' : '+'}${t.monto.toLocaleString('es-ES')}€
+                    </div>
+                    <div style="margin-left: 10px;">
+                        <input type="checkbox" ${isSelected ? 'checked' : ''} onchange="pendingTransactions[${i}].selected = this.checked; if(!this.checked) document.getElementById('select-all-bank').checked = false;">
+                    </div>
                 `;
-                // Set initial selection
-                pendingTransactions[i].selected = t.status === 'new';
                 list.appendChild(div);
             });
             lucide.createIcons();
@@ -828,10 +1444,12 @@
             const mapped = toAdd.map(t => ({
                 fecha: t.fecha,
                 monto: t.monto,
-                categoria: "Pendiente", // We can add AI categorization here later
+                categoria: t.categoria || "Otros",
+                subcategoria: t.subcategoria || "Varios",
                 detalle: t.detalle,
                 tipo: t.tipo,
-                tienda: t.tienda
+                tienda: t.tienda,
+                saldo_banco: t.saldo_banco // CRITICAL: Must persist the bank's truth
             }));
 
             await fetch('http://localhost:5000/ingest_data', {
@@ -852,6 +1470,19 @@
             fileInput.value = '';
         }
 
+        async function debugClearActivity() {
+            if (!confirm("⚠️ ¡PELIGRO! ¿Seguro que quieres borrar TODA tu actividad? Esta acción no se puede deshacer.")) return;
+            try {
+                const res = await fetch('http://localhost:5000/debug/clear-activity', { method: 'POST' });
+                const r = await res.json();
+                if (r.status === 'success') {
+                    alert(r.message);
+                    closeSettings();
+                    await refreshData();
+                } else alert("Error: " + r.message);
+            } catch (e) { alert("Error de conexión"); }
+        }
+
         // Settings Logic
         function openSettings() {
             document.getElementById('view-settings').classList.add('active');
@@ -867,17 +1498,41 @@
                 const div = document.createElement('div');
                 div.className = 'cat-config-item';
                 div.innerHTML = `
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                        <input type="text" value="${name}" class="form-input" style="width:150px; font-weight:700; border:none; padding:0;" onchange="updateCatName('${name}', this.value)">
-                        <div style="display:flex; align-items:center; gap:10px;">
-                            <span style="font-size:0.7rem; font-weight:700;">€</span>
-                            <input type="number" value="${cfg.budget}" class="form-input" style="width:80px; padding:5px 10px;" onchange="updateCatBudget('${name}', this.value)">
-                            <i data-lucide="trash-2" size="18" style="color:var(--vhs-red); cursor:pointer;" onclick="deleteCat('${name}')"></i>
+                    <div class="cat-header">
+                        <div style="flex: 1;">
+                            <span class="budget-label">Nombre de Categoría</span>
+                            <input type="text" value="${name}" class="form-input" 
+                                style="font-weight:700; border:none; padding:0; background:transparent; font-size:1.1rem; color:var(--text-charcoal);" 
+                                onchange="updateCatName('${name}', this.value)">
+                        </div>
+                        <div style="display:flex; align-items:center; gap:16px;">
+                            <div style="text-align: right;">
+                                <label class="budget-label">Presupuesto</label>
+                                <div style="display:flex; align-items:center; gap:4px; background:var(--bg-cream); padding:4px 10px; border-radius:8px;">
+                                    <span style="font-size:0.8rem; font-weight:800; color:var(--text-muted);">€</span>
+                                    <input type="number" value="${cfg.budget}" class="form-input" 
+                                        style="width:70px; padding:0; border:none; background:transparent; font-weight:700; text-align:right;" 
+                                        onchange="updateCatBudget('${name}', this.value)">
+                                </div>
+                            </div>
+                            <button onclick="deleteCat('${name}')" style="background:rgba(229, 75, 75, 0.1); border:none; color:var(--vhs-red); width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                                <i data-lucide="trash-2" size="14"></i>
+                            </button>
                         </div>
                     </div>
-                    <div id="subs-${name}">
-                        ${cfg.subcategories.map(s => `<span class="sub-tag">${s} <i data-lucide="x" size="10" onclick="deleteSub('${name}','${s}')"></i></span>`).join('')}
-                        <input type="text" class="form-input" style="font-size:0.7rem; padding:4px 8px; width:100px; display:inline-block;" placeholder="+ Sub" onkeypress="if(event.key==='Enter') addSub('${name}', this)">
+                    <div id="subs-${name}" style="margin-top:10px;">
+                        <span class="budget-label" style="margin-bottom:8px;">Subcategorías</span>
+                        <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                            ${cfg.subcategories.map(s => `
+                                <span class="sub-tag">
+                                    ${s} 
+                                    <i data-lucide="x" size="12" onclick="deleteSub('${name}','${s}')"></i>
+                                </span>
+                            `).join('')}
+                            <input type="text" class="form-input" 
+                                style="font-size:0.75rem; padding:6px 14px; width:110px; height:32px; border-style:dashed; border-radius:8px;" 
+                                placeholder="+ Añadir" onkeypress="if(event.key==='Enter') addSub('${name}', this)">
+                        </div>
                     </div>
                 `;
                 list.appendChild(div);
