@@ -152,6 +152,12 @@
             "budget": 0
         }
     },
+    "preferred_accounts": [
+        "Germán",
+        "eToro",
+        "Esposa",
+        "Efectivo"
+    ],
     "classification_rules": [
         {
             "pattern": "MERCADONA",
