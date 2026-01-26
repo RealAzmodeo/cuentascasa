@@ -149,6 +149,40 @@ body {
     letter-spacing: 0.5px;
 }
 
+/* Type Toggle / Segmented Control */
+.type-toggle {
+    display: flex;
+    background: var(--border);
+    padding: 4px;
+    border-radius: 50px;
+    margin-bottom: 24px;
+}
+
+.type-toggle-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 8px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--text-muted);
+}
+
+.type-toggle-btn.active[data-type="Gasto"] {
+    background: var(--vhs-red);
+    color: white;
+    box-shadow: 0 4px 12px rgba(229, 75, 75, 0.3);
+}
+
+.type-toggle-btn.active[data-type="Ingreso"] {
+    background: var(--sage-green);
+    color: white;
+    box-shadow: 0 4px 12px rgba(136, 158, 129, 0.3);
+}
+
 /* Cards */
 .card {
     background: var(--bg-surface);

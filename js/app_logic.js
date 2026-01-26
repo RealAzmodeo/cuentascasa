@@ -1034,7 +1034,10 @@ async function addCategory() {
 }
 
 // Movements Manual/AI
-function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
+function openAddModal() {
+    document.getElementById('addModal').style.display = 'flex';
+    setEntryType('Gasto', 'add');
+}
 function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
 function setAddTab(tab) {
     document.getElementById('pane-manual').style.display = tab === 'manual' ? 'block' : 'none';
@@ -1050,14 +1053,47 @@ async function saveMovement() {
     const desc = document.getElementById('in-desc').value;
     const cat = document.getElementById('in-cat').value;
     const acc = document.getElementById('in-acc').value;
+    const type = document.querySelector('#add-type-toggle .type-toggle-btn.active').getAttribute('data-type');
+
     if (!amount || !desc) return alert("Faltan datos");
     try {
         await apiFetch('/ingest', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: `${desc} ${amount} en ${cat}`, account_override: acc })
+            body: JSON.stringify({ text: `${type}: ${desc} ${amount} en ${cat}`, account_override: acc })
         });
         closeAddModal(); await refreshData();
     } catch (e) { alert(e.message); }
+}
+
+function setEntryType(type, context, selectedCat = null) {
+    const parentId = context === 'add' ? 'add-type-toggle' : 'edit-type-toggle';
+    const selectId = context === 'add' ? 'in-cat' : 'edit-cat';
+
+    // Update visual buttons
+    const btns = document.querySelectorAll(`#${parentId} .type-toggle-btn`);
+    btns.forEach(b => {
+        if (b.getAttribute('data-type') === type) b.classList.add('active');
+        else b.classList.remove('active');
+    });
+
+    // Filter categories based on type
+    const sel = document.getElementById(selectId);
+    if (!sel) return;
+
+    let options = "";
+    if (type === 'Ingreso') {
+        options = `<option value="Ingresos" ${'Ingresos' === selectedCat ? 'selected' : ''}>Ingresos</option>`;
+    } else {
+        const taxonomy = currentConfig.taxonomy || {};
+        options = Object.keys(taxonomy)
+            .filter(c => c !== 'Ingresos')
+            .map(c => `<option value="${c}" ${c === selectedCat ? 'selected' : ''}>${c}</option>`)
+            .join('');
+    }
+    sel.innerHTML = options;
+
+    // Update subcategories for the new default/selected category
+    if (context === 'edit') updateEditSubOptions(sel.value);
 }
 
 async function sendAI() {
@@ -1093,13 +1129,15 @@ function openEditModal(m) {
     document.getElementById('edit-amount').value = m.monto;
     document.getElementById('edit-desc').value = m.tienda || m.detalle;
 
-    const catSel = document.getElementById('edit-cat');
-    const accSel = document.getElementById('edit-acc');
+    // Set type toggle
+    setEntryType(m.tipo || 'Gasto', 'edit', m.categoria);
 
-    // Populate categories and accounts if not already there
-    catSel.innerHTML = Object.keys(currentConfig.taxonomy).map(c => `<option value="${c}" ${c === m.categoria ? 'selected' : ''}>${c}</option>`).join('');
+    const accSel = document.getElementById('edit-acc');
     const accounts = currentConfig.preferred_accounts || ["Germán", "eToro", "Esposa", "Efectivo"];
     accSel.innerHTML = accounts.map(acc => `<option value="${acc}" ${acc === m.cuenta ? 'selected' : ''}>${acc}</option>`).join('');
+
+    const catSel = document.getElementById('edit-cat');
+    catSel.value = m.categoria;
 
     updateEditSubOptions(m.categoria, m.subcategoria);
     document.getElementById('editModal').style.display = 'flex';
@@ -1123,10 +1161,7 @@ async function saveTransactionEdit() {
     const cat = document.getElementById('edit-cat').value;
     const subcat = document.getElementById('edit-subcat').value;
     const acc = document.getElementById('edit-acc').value;
-
-    // Find the original transaction to get the type
-    const m = currentAnalytics.months[selectedMonthKey]?.transactions.find(t => t.id == id);
-    const type = m ? m.tipo : 'Gasto';
+    const type = document.querySelector('#edit-type-toggle .type-toggle-btn.active').getAttribute('data-type');
 
     try {
         const res = await apiFetch('/update', {

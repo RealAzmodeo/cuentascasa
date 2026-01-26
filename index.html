@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Antigravity Elite Finance</title>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="lib/lucide.min.js"></script>
+    <script src="lib/chart.min.js"></script>
     <!-- High Readability Typography -->
     <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -267,6 +267,12 @@
             </div>
 
             <div id="pane-manual">
+                <div class="type-toggle" id="add-type-toggle">
+                    <button class="type-toggle-btn active" data-type="Gasto"
+                        onclick="setEntryType('Gasto', 'add')">GASTO</button>
+                    <button class="type-toggle-btn" data-type="Ingreso"
+                        onclick="setEntryType('Ingreso', 'add')">INGRESO</button>
+                </div>
                 <div class="input-group"><label>Monto</label><input type="number" step="0.01" id="in-amount"
                         class="form-input" placeholder="0.00"></div>
                 <div class="input-group"><label>Tienda / Detalle</label><input type="text" id="in-desc"
@@ -298,6 +304,13 @@
     <div id="editModal" class="modal" onclick="if(event.target==this) closeEditModal()">
         <div class="modal-content">
             <h3 style="margin-bottom:24px;">Editar Movimiento</h3>
+
+            <div class="type-toggle" id="edit-type-toggle">
+                <button class="type-toggle-btn" data-type="Gasto" onclick="setEntryType('Gasto', 'edit')">GASTO</button>
+                <button class="type-toggle-btn" data-type="Ingreso"
+                    onclick="setEntryType('Ingreso', 'edit')">INGRESO</button>
+            </div>
+
             <input type="hidden" id="edit-id">
             <div class="input-group"><label>Fecha</label><input type="date" id="edit-date" class="form-input"></div>
             <div class="input-group"><label>Monto</label><input type="number" step="0.01" id="edit-amount"
