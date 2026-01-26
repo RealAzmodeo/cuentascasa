@@ -4,7 +4,6 @@ import json
 import datetime
 import time
 from google import genai
-from openpyxl import load_workbook
 from dotenv import load_dotenv
 import bank_parser
 import uuid
@@ -12,20 +11,74 @@ import uuid
 # Load environment variables
 load_dotenv()
 
+from database import db_session, SessionLocal
+from models import Transaction
+from sqlalchemy import desc, extract, and_, or_
+
 # Configuration
-API_KEY = "AIzaSyA_vUyepkn_HR-I18EVugVKvulV-t7OgZc"
+API_KEY = os.getenv("GEMINI_API_KEY")
 EXCEL_PATH = os.getenv("EXCEL_PATH")
+
+if not API_KEY:
+    raise ValueError("GEMINI_API_KEY no encontrada en el archivo .env")
+
 client = genai.Client(api_key=API_KEY)
 MODEL_NAME = 'gemini-2.5-flash'
 
 CONFIG_PATH = 'd:/Proyectos/Antigravity Offline/Cuentas-Casa/taxonomy.json'
 
-# Initial load
+def rename_account_in_db(old_name, new_name):
+    """Updates all transactions from one account name to another."""
+    from models import Transaction
+    db = SessionLocal()
+    try:
+        updated = db.query(Transaction).filter(Transaction.cuenta == old_name).update({Transaction.cuenta: new_name})
+        db.commit()
+        return True, f"Actualizados {updated} movimientos de {old_name} a {new_name}"
+    except Exception as e:
+        db.rollback()
+        return False, str(e)
+    finally:
+        db.close()
+
+def add_classification_rule(pattern, category, subcategory=None, rule_type='Gasto'):
+    """Adds a new learning rule to taxonomy.json."""
+    config = load_config()
+    rules = config.get('classification_rules', [])
+    
+    # Check if duplicate exists
+    for r in rules:
+        if r['pattern'].upper() == pattern.upper() and r.get('type') == rule_type:
+            r['category'] = category
+            r['subcategory'] = subcategory
+            save_config_file(config)
+            return True
+            
+    rules.append({
+        "pattern": pattern.upper(),
+        "category": category,
+        "subcategory": subcategory,
+        "type": rule_type
+    })
+    config['classification_rules'] = rules
+    save_config_file(config)
+    return True
+
+def save_config_file(config):
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=4)
+
 def load_config():
     if not os.path.exists(CONFIG_PATH):
         return {"taxonomy": {}, "classification_rules": []}
-    with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    try:
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+            content = f.read().strip()
+            if not content:
+                return {"taxonomy": {}, "classification_rules": []}
+            return json.loads(content)
+    except (json.JSONDecodeError, Exception):
+        return {"taxonomy": {}, "classification_rules": []}
 
 def get_taxonomy():
     cfg = load_config()
@@ -132,179 +185,259 @@ def extract_transaction(text, retries=3):
             return None
     return None
 
-def find_candidates(category, wb):
-    sheet = wb['Movimientos']
-    candidates = []
-    rows = list(sheet.iter_rows(min_row=2, values_only=True))
-    for i, row in enumerate(reversed(rows)):
-        # row[2] is Category
-        if str(row[2]).lower() == category.lower() and str(row[4]).lower() == 'gasto':
-            candidates.append({
-                "id": len(rows) - i + 1,
-                "fecha": str(row[0]),
-                "monto": row[1],
-                "categoria": row[2],
-                "detalle": row[3],
-                "tienda": row[5] if len(row) > 5 else ""
-            })
-        if len(candidates) >= 5: break
-    return candidates
+def find_candidates(category):
+    """Finds recent transactions in the database for refund/matching."""
+    db = SessionLocal()
+    try:
+        return db.query(Transaction).filter(
+            Transaction.categoria == category,
+            Transaction.tipo == 'Gasto'
+        ).order_by(desc(Transaction.fecha)).limit(5).all()
+    finally:
+        db.close()
 
-def check_for_duplicates(data, wb):
-    sheet = wb['Movimientos']
-    new_date = datetime.datetime.strptime(data['fecha'], '%Y-%m-%d').date() if isinstance(data['fecha'], str) else data['fecha']
-    if hasattr(new_date, 'date'): new_date = new_date.date()
+def bulk_reconcile(transactions, account):
+    """Checks a list of transactions against the DB in a single batch to avoid N+1 queries."""
+    if not transactions: return []
+    
+    # Get the date range of the transactions to narrow down the query
+    dates = []
+    for t in transactions:
+        try:
+            d = datetime.datetime.strptime(t['fecha'], '%Y-%m-%d').date() if isinstance(t['fecha'], str) else t['fecha']
+            dates.append(d)
+        except: continue
+    
+    if not dates: return transactions
 
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        row_date, row_amount, row_cat = row[0], row[1], row[2]
-        if not isinstance(row_date, (datetime.datetime, datetime.date)):
-            try: row_date = datetime.datetime.strptime(str(row_date).split(' ')[0], '%Y-%m-%d').date()
-            except: continue
-        else:
-            if hasattr(row_date, 'date'): row_date = row_date.date()
+    min_date = min(dates) - datetime.timedelta(days=2)
+    max_date = max(dates) + datetime.timedelta(days=2)
+    
+    db = SessionLocal()
+    try:
+        # Fetch all existing transactions in the relevant range
+        existing = db.query(Transaction).filter(
+            Transaction.cuenta == account,
+            Transaction.fecha >= min_date,
+            Transaction.fecha <= max_date
+        ).all()
         
-        if (abs(new_date - row_date).days <= 1 and 
-            abs(float(row_amount) - float(data['monto'])) < 0.01 and 
-            str(row_cat).lower() == str(data['categoria']).lower()):
-            return True
-    return False
+        # Build a lookup set for fast O(1) matching
+        # Key: (date, round(amount, 2), tipo.lower())
+        lookup = set()
+        for ex in existing:
+            lookup.add((ex.fecha, round(float(ex.monto), 2), ex.tipo.lower()))
+            
+        for t in transactions:
+            t_date = datetime.datetime.strptime(t['fecha'], '%Y-%m-%d').date() if isinstance(t['fecha'], str) else t['fecha']
+            t_amt = round(float(t['monto']), 2)
+            t_type = t['tipo'].lower()
+            
+            # Check for match (incl exact date or +-1 day for robustness)
+            matched = False
+            for d_off in [0, -1, 1]:
+                check_date = t_date + datetime.timedelta(days=d_off)
+                if (check_date, t_amt, t_type) in lookup:
+                    matched = True
+                    break
+            
+            t['status'] = 'duplicate' if matched else 'new'
+            
+        return transactions
+    finally:
+        db.close()
+
+def reconcile_transaction(data):
+    """Old single-row version, keeping for backward compatibility but redirecting to optimized logic if possible."""
+    res = bulk_reconcile([data], data.get('cuenta', 'Germán'))
+    if res:
+        return (res[0]['status'] == 'duplicate'), res[0]['status']
+    return False, "error"
 
 def get_analytics(account_filter=None):
-    wb = load_workbook(EXCEL_PATH, data_only=True)
-    if 'Movimientos' not in wb.sheetnames: return {}
-    sheet = wb['Movimientos']
-    data = []
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        if row[0] and row[1]:
-            # Filter by account if requested
-            acc = str(row[8] or 'Germán').strip()
-            if account_filter and acc != account_filter:
-                continue
+    """Retrieves analytics using SQL aggregates for speed."""
+    from database import log_debug
+    from sqlalchemy import func
+    log_debug("DB: get_analytics started")
+    db = SessionLocal()
+    try:
+        # 1. Basic Stats: Totals by Month/Account/Type
+        # Using extraction to group by month
+        month_field = func.to_char(Transaction.fecha, 'YYYY-MM') if 'postgresql' in str(db.bind.url) else func.strftime('%Y-%m', Transaction.fecha)
+        
+        query = db.query(
+            month_field.label('month'),
+            Transaction.tipo,
+            Transaction.categoria,
+            func.sum(Transaction.monto).label('sum_monto')
+        )
+        
+        if account_filter:
+            query = query.filter(Transaction.cuenta == account_filter)
+        
+        agg_data = query.group_by('month', Transaction.tipo, Transaction.categoria).all()
+        
+        if not agg_data:
+            return {"months": {}, "history": [], "current_month_key": "", "sorted_months": [], "accounts": []}
+
+        # 2. Reconstruct the structure needed by frontend
+        monthly_stats = {}
+        for month, tipo, cat, monto in agg_data:
+            if month not in monthly_stats:
+                monthly_stats[month] = {"total": 0, "income": 0, "categories": {}, "subcategories": {}, "stores": {}, "top_transactions": {}, "transactions": []}
             
-            try:
-                dt = row[0] if isinstance(row[0], (datetime.datetime, datetime.date)) else datetime.datetime.strptime(str(row[0]).split(' ')[0], '%Y-%m-%d')
-                data.append({
-                    "fecha": dt,
-                    "monto": float(row[1]),
-                    "categoria": str(row[2]),
-                    "detalle": str(row[3]) if row[3] else "",
-                    "tipo": str(row[4]).lower(),
-                    "tienda": str(row[5]) if len(row) > 5 and row[5] else "Desconocido",
-                    "subcategoria": str(row[6]) if len(row) > 6 and row[6] else "Varios",
-                    "cuenta": acc
+            stats = monthly_stats[month]
+            monto = float(monto or 0)
+            tipo_low = tipo.lower()
+            
+            if tipo_low == 'gasto':
+                stats["total"] += monto
+                stats["categories"][cat] = stats["categories"].get(cat, 0) + monto
+            elif tipo_low == 'ingreso':
+                stats["income"] += monto
+
+        # 3. Get recent transactions for the "View Transactions" part (limited)
+        log_debug("DB: get_analytics fetching detailed transactions...")
+        tx_query = db.query(Transaction)
+        if account_filter:
+            tx_query = tx_query.filter(Transaction.cuenta == account_filter)
+        
+        # Only fetch last 200 transactions to keep it snappy. Analytics should be about trends anyway.
+        recent_tx = tx_query.order_by(desc(Transaction.fecha)).limit(300).all()
+        
+        for t in recent_tx:
+            m_key = t.fecha.strftime('%Y-%m')
+            if m_key in monthly_stats:
+                monthly_stats[m_key]["transactions"].append({
+                    "id": t.id,
+                    "fecha": t.fecha.isoformat(),
+                    "monto": float(t.monto),
+                    "categoria": t.categoria,
+                    "detalle": t.detalle or t.tienda,
+                    "tipo": t.tipo.capitalize(),
+                    "tienda": t.tienda,
+                    "subcategoria": t.subcategoria,
+                    "cuenta": t.cuenta
                 })
-            except: continue
 
-    if not data: return {"months": {}, "history": [], "current_month_key": "", "sorted_months": [], "accounts": []}
-    
-    # Extract unique accounts from the full dataset (before filtering)
-    # We do this from the sheet original rows to be sure we see all accounts
-    all_accounts = sorted(list(set([str(row[8] or 'Germán').strip() for row in sheet.iter_rows(min_row=2, values_only=True) if row[0]])))
-    
-    # Structure: { "YYYY-MM": { "total": 0, "categories": {}, "subcategories": {}, "stores": {}, "top_transactions": {} } }
-    monthly_stats = {}
-    
-    for idx, d in enumerate(data):
-        if d['tipo'] == 'gasto':
-            m_key = d['fecha'].strftime('%Y-%m')
-            if m_key not in monthly_stats:
-                monthly_stats[m_key] = {"total": 0, "categories": {}, "subcategories": {}, "stores": {}, "top_transactions": {}}
-            
-            stats = monthly_stats[m_key]
-            stats["total"] += d['monto']
-            stats["categories"][d['categoria']] = stats["categories"].get(d['categoria'], 0) + d['monto']
-            stats["stores"][d['tienda']] = stats["stores"].get(d['tienda'], 0) + d['monto']
-            
-            # Track top transactions for breakdown
-            if d['categoria'] not in stats["top_transactions"]:
-                stats["top_transactions"][d['categoria']] = []
-            
-            stats["top_transactions"][d['categoria']].append({
-                "detalle": d['tienda'] if d['tienda'] != "Desconocido" else d['detalle'],
-                "monto": d['monto'],
-                "fecha": d['fecha'].strftime('%d/%m')
-            })
+        sorted_months = sorted(monthly_stats.keys(), reverse=True)
+        ascending_months = sorted(monthly_stats.keys())
+        history_list = []
+        for i, m in enumerate(ascending_months):
+            curr_total = monthly_stats[m]["total"]
+            prev_total = monthly_stats[ascending_months[i-1]]["total"] if i > 0 else 0
+            growth = round(((curr_total - prev_total) / prev_total * 100), 1) if prev_total > 0 else 0
+            history_list.append({ "month": m, "total": round(curr_total, 2), "growth": growth })
+        
+        now_key = datetime.datetime.now().strftime('%Y-%m')
+        current_month_key = now_key if now_key in monthly_stats else (sorted_months[0] if sorted_months else now_key)
+        
+        # 4. Get unique accounts list
+        all_accounts = [r[0] for r in db.query(Transaction.cuenta).distinct().all()]
 
-            if d['categoria'] not in stats["subcategories"]:
-                stats["subcategories"][d['categoria']] = {}
-            sub = d['subcategoria']
-            stats["subcategories"][d['categoria']][sub] = stats["subcategories"][d['categoria']].get(sub, 0) + d['monto']
-            
-            # Keep transaction list per month for Timeline
-            if "transactions" not in stats:
-                stats["transactions"] = []
-            
-            stats["transactions"].append({
-                "id": idx + 2, # Use the actual index from enumerate
-                "fecha": d['fecha'].strftime('%Y-%m-%d'),
-                "monto": d['monto'],
-                "categoria": d['categoria'],
-                "detalle": d.get('detalle', d['tienda']),
-                "tipo": d['tipo'].capitalize(),
-                "tienda": d['tienda'],
-                "subcategoria": d['subcategoria'],
-                "cuenta": d['cuenta']
-            })
+        return {
+            "months": monthly_stats,
+            "history": history_list,
+            "current_month_key": current_month_key,
+            "sorted_months": sorted_months,
+            "accounts": sorted(all_accounts)
+        }
+    except Exception as e:
+        log_debug(f"Error in analytics: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        db.close()
 
-    # Sort transactions by amount descending (Largest First)
-    for m in monthly_stats:
-        for cat in monthly_stats[m]["top_transactions"]:
-            monthly_stats[m]["top_transactions"][cat].sort(key=lambda x: x['monto'], reverse=True)
+def get_current_summary(account_filter=None):
+    """Calculates totals and projections from the Database using SQL aggregates for speed."""
+    from database import log_debug
+    from sqlalchemy import func
+    log_debug("DB: get_current_summary started")
+    db = SessionLocal()
+    try:
+        log_debug("DB: get_current_summary aggregate query start")
+        # Query: sum of monto grouped by account and type
+        stats = db.query(
+            Transaction.cuenta, 
+            Transaction.tipo, 
+            func.sum(Transaction.monto)
+        ).group_by(Transaction.cuenta, Transaction.tipo).all()
 
-    # Sort months descending (Latest First)
-    sorted_months = sorted(monthly_stats.keys(), reverse=True)
-    
-    # Calculate MoM growth and history list (ascending for chart logic)
-    ascending_months = sorted(monthly_stats.keys())
-    history_list = []
-    for i, m in enumerate(ascending_months):
-        curr_total = monthly_stats[m]["total"]
-        prev_total = monthly_stats[ascending_months[i-1]]["total"] if i > 0 else 0
-        growth = round(((curr_total - prev_total) / prev_total * 100), 1) if prev_total > 0 else 0
-        history_list.append({
-            "month": m,
-            "total": round(curr_total, 2),
-            "growth": growth
-        })
-    
-    now_key = datetime.datetime.now().strftime('%Y-%m')
-    current_month_key = now_key if now_key in monthly_stats else (sorted_months[0] if sorted_months else now_key)
-    
-    return {
-        "months": monthly_stats,
-        "history": history_list,
-        "current_month_key": current_month_key,
-        "sorted_months": sorted_months,
-        "accounts": all_accounts
-    }
+        if not stats:
+            return {"total_income": 0, "total_expense": 0, "savings": 0, "accounts": [], "account_details": {}}
+
+        all_accounts = sorted(list(set([row[0] for row in stats])))
+        account_data = {acc: {"projected": 0} for acc in all_accounts}
+        
+        total_income = 0
+        total_expense = 0
+
+        for acc, tipo, amt in stats:
+            amt = float(amt or 0)
+            tipo_lower = (tipo or "Gasto").lower()
+            
+            if tipo_lower == 'ingreso':
+                account_data[acc]["projected"] += amt
+                if not account_filter or acc == account_filter:
+                    total_income += amt
+            else:
+                account_data[acc]["projected"] -= amt
+                if not account_filter or acc == account_filter:
+                    total_expense += amt
+                    
+        total_projected = account_data.get(account_filter, {}).get("projected", 0) if account_filter else sum(a["projected"] for a in account_data.values())
+        
+        return {
+            "total_income": round(total_income, 2),
+            "total_expense": round(total_expense, 2),
+            "savings": round(total_projected, 2),
+            "accounts": all_accounts,
+            "account_details": {k: {"projected": round(v["projected"], 2), "anchor": 0} for k, v in account_data.items()},
+            "current_account": account_filter
+        }
+    except Exception as e:
+        log_debug(f"Error in summary: {e}")
+        return {"status": "error", "message": str(e)}
+    finally:
+        db.close()
 
 def update_transaction(row_id, data):
-    wb = load_workbook(EXCEL_PATH)
-    sheet = wb['Movimientos']
-    if row_id < 2 or row_id > sheet.max_row: return False, "ID inválido"
+    """Updates a transaction in the database."""
+    db = SessionLocal()
     try:
-        sheet.cell(row=row_id, column=1).value = data['fecha']
-        sheet.cell(row=row_id, column=2).value = data['monto']
-        sheet.cell(row=row_id, column=3).value = data['categoria']
-        sheet.cell(row=row_id, column=4).value = data['detalle']
-        sheet.cell(row=row_id, column=5).value = data['tipo']
-        if len(data.get('tienda', '')) > 0: sheet.cell(row=row_id, column=6).value = data['tienda']
-        if len(data.get('subcategoria', '')) > 0: sheet.cell(row=row_id, column=7).value = data['subcategoria']
-        wb.save(EXCEL_PATH)
-        sort_excel_by_date()
-        return True, "Actualizado"
-    except Exception as e: return False, str(e)
+        tx = db.query(Transaction).filter(Transaction.id == row_id).first()
+        if tx:
+            tx.fecha = datetime.datetime.strptime(data['fecha'], '%Y-%m-%d').date() if isinstance(data['fecha'], str) else data['fecha']
+            tx.monto = float(data['monto'])
+            tx.categoria = data['categoria']
+            tx.detalle = data['detalle']
+            tx.tipo = data['tipo']
+            tx.tienda = data.get('tienda', '')
+            tx.subcategoria = data.get('subcategoria', '')
+            db.commit()
+            return True, "Actualizado en DB"
+        return False, "Transacción no encontrada"
+    except Exception as e:
+        db.rollback()
+        return False, f"DB Update error: {e}"
+    finally:
+        db.close()
 
 def delete_transaction(row_id):
-    wb = load_workbook(EXCEL_PATH)
-    sheet = wb['Movimientos']
-    if row_id < 2 or row_id > sheet.max_row: return False, "ID inválido"
+    """Deletes a transaction from the database."""
+    db = SessionLocal()
     try:
-        sheet.delete_rows(row_id)
-        wb.save(EXCEL_PATH)
-        sort_excel_by_date()
-        return True, "Eliminado"
-    except Exception as e: return False, str(e)
+        tx = db.query(Transaction).filter(Transaction.id == row_id).first()
+        if tx:
+            db.delete(tx)
+            db.commit()
+            return True, "Eliminado de DB"
+        return False, "Transacción no encontrada"
+    except Exception as e:
+        db.rollback()
+        return False, f"DB Delete error: {e}"
+    finally:
+        db.close()
 
 def expand_transfers(data_list):
     """Processes a list of transactions to add counterparts for transfers."""
@@ -314,181 +447,41 @@ def expand_transfers(data_list):
         if t.get('intent') == 'transfer':
             dest = t.get('destinatario')
             if dest and dest != t.get('cuenta'):
-                # Create the income/expense in the other account
                 counterpart = t.copy()
                 counterpart['cuenta'] = dest
                 counterpart['tipo'] = 'Ingreso' if t['tipo'] == 'Gasto' else 'Gasto'
                 counterpart['detalle'] = f"Transf. de {t.get('cuenta')}: {t['detalle']}"
-                # The LinkID is already set by Gemini or manual input
                 expanded.append(counterpart)
     return expanded
 
-def append_to_excel(data_list, force=False):
-    # Apply transfer logic before appending
-    processed_list = expand_transfers(data_list)
-    
-    wb = load_workbook(EXCEL_PATH)
-    sheet = wb['Movimientos']
-    added, dups = 0, []
-    for data in processed_list:
-        # Use the same reconcile logic as bank ingestion for all insertions
-        exists, status = reconcile_transaction(data, wb)
-        if not force and exists:
-            dups.append(data)
-            print(f"DEBUG: Duplicado detectado e ignorado: {data['detalle']} ({data['monto']})")
-            continue
-        
-        sheet.append([
-            data['fecha'], data['monto'], data['categoria'], data['detalle'], data['tipo'],
-            data.get('tienda', ''), data.get('subcategoria', ''), data.get('saldo_banco', ''),
-            data.get('cuenta', 'Germán'), data.get('link_id', '')
-        ])
-        added += 1
-    wb.save(EXCEL_PATH)
-    sort_excel_by_date()
-    if dups and not force: return False, {"status": "duplicate_found", "duplicates": dups}
-    return True, {"status": "success", "added": added}
-
-def sort_excel_by_date():
-    """Forces the Excel to be sorted by date (column 1) and removes empty/ghost rows.
-    Maintains relative order for transactions on the same day to preserve ledger flow.
-    """
-    try:
-        wb = load_workbook(EXCEL_PATH)
-        if 'Movimientos' not in wb.sheetnames: return
-        sheet = wb['Movimientos']
-        
-        # 1. Read all valid data rows with their original index to maintain stable sort
-        data = []
-        for i, row in enumerate(sheet.iter_rows(min_row=2, values_only=True)):
-            if row[0] is not None: # Header must have a date
-                data.append((list(row), i))
-        
-        if not data:
-            if sheet.max_row > 1:
-                sheet.delete_rows(2, sheet.max_row)
-            wb.save(EXCEL_PATH)
-            return
-        
-        # 2. Sort by date, then by original index to keep same-day order
-        def get_sort_key(item):
-            r, original_idx = item
-            d = r[0]
-            if isinstance(d, (datetime.datetime, datetime.date)):
-                dt = d.date() if hasattr(d, 'date') else d
-            else:
-                try: dt = datetime.datetime.strptime(str(d).split(' ')[0], '%Y-%m-%d').date()
-                except: 
-                    try: dt = datetime.datetime.strptime(str(d).split(' ')[0], '%d/%m/%Y').date()
-                    except: dt = datetime.date(1900, 1, 1)
-            return (dt, original_idx)
-
-        data.sort(key=get_sort_key)
-        
-        # 3. Clean and Re-write the sheet completely
-        wb.remove(sheet)
-        sheet = wb.create_sheet('Movimientos', 0)
-        sheet.append(['Fecha', 'Monto', 'Categoría', 'Detalle', 'Tipo', 'Tienda', 'Subcategoría', 'Saldo Banco', 'Cuenta', 'LinkID'])
-        
-        for row_data, _ in data:
-            sheet.append(row_data)
-            
-        wb.save(EXCEL_PATH)
-        print(f"DEBUG: Excel rebuilt and sorted ({len(data)} rows).")
-    except Exception as e:
-        print(f"DEBUG: Error sorting Excel: {e}")
-
-def reconcile_transaction(data, wb):
-    """Checks if a transaction from the bank already exists in the Excel.
-    Uses date, amount, type, AND a fuzzy match on details to avoid false positives.
-    """
-    sheet = wb['Movimientos']
-    
-    if isinstance(data['fecha'], str):
-        try: new_date = datetime.datetime.strptime(data['fecha'], '%Y-%m-%d').date()
-        except: 
-            try: new_date = datetime.datetime.strptime(data['fecha'], '%d/%m/%Y').date()
-            except: new_date = datetime.date.today()
-    else:
-        new_date = data['fecha'].date() if hasattr(data['fecha'], 'date') else data['fecha']
-
-    new_detail_norm = str(data.get('detalle') or '').lower().strip()
-    new_amt = round(float(data['monto']), 2)
-
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        row_date, row_amount, row_cat, row_detail, row_type = row[0], row[1], row[2], row[3], row[4]
-        
-        if row_date is None or row_amount is None:
-            continue
-
-        if not isinstance(row_date, (datetime.datetime, datetime.date)):
-            try: r_date = datetime.datetime.strptime(str(row_date).split(' ')[0], '%Y-%m-%d').date()
-            except: continue
-        else:
-            r_date = row_date.date() if hasattr(row_date, 'date') else row_date
-        
-        # Match logic: 
-        # 1. Exact amount
-        # 2. Same type (Gasto / Ingreso)
-        # 3. Same date (Bank statements are usually exact, manual entries might differ by 1 day)
-        # 4. Detail check: If details are significantly different, it's NOT a duplicate
-        try:
-            r_amt = round(float(row_amount), 2)
-            r_account = str(row_account or 'Germán').strip()
-            new_account = str(data.get('cuenta', 'Germán')).strip()
-            
-            if (abs(r_amt - new_amt) < 0.001 and 
-                str(row_type).lower() == str(data['tipo']).lower() and
-                abs((new_date - r_date).days) <= 1 and
-                r_account == new_account):
-                
-                # If exact date and exact detail, definitely duplicate
-                r_detail_norm = str(row_detail or '').lower().strip()
-                if new_date == r_date and new_detail_norm == r_detail_norm:
-                    return True, "duplicate"
-                
-                # If date is within 1 day but details match well, likely same transaction
-                if new_detail_norm in r_detail_norm or r_detail_norm in new_detail_norm:
-                    return True, "duplicate_likely"
-        except: continue
-            
-    return False, "new"
-
 def process_bank_statement(filepath):
+    """Parses a bank statement (PDF/Excel) and reconciles with DB."""
     ext = os.path.splitext(filepath)[1].lower()
-    wb = load_workbook(EXCEL_PATH, data_only=True)
     current_taxonomy = get_taxonomy()
-    
-    # 1. Extract transactions and account info
-    transactions = []
     cfg = load_config()
-    current_taxonomy = get_taxonomy()
-    detected_account = "Germán" # Default
+    detected_account = "Germán"
+    transactions = []
     
     if ext == '.pdf':
-        print(f"DEBUG: Procesando PDF con Gemini...")
         try:
-            # Upload file to Gemini
-            with open(filepath, 'rb') as f:
-                uploaded_file = client.files.upload(file=f, config={'mime_type': 'application/pdf'})
+            uploaded_file = client.files.upload(file=filepath, config={'mime_type': 'application/pdf'})
             
             prompt = f"""
             Analiza este extracto bancario en PDF con PRECISIÓN QUIRÚRGICA. 
-            
-            1. Identifica el titular (Germán, eToro, Esposa, Efectivo, o un nombre nuevo). 
-            2. Extrae todos los movimientos.
+            1. Identifica el titular (Germán, eToro, Esposa, Efectivo, o un nombre por defecto: Germán). 
+            2. Extrae todos los movimientos del periodo.
             
             Taxonomía Obligatoria:
             {json.dumps(current_taxonomy, indent=2)}
             
             Instrucciones de Categorización (CRÍTICO):
-            - NO uses 'Otros' si el detalle del banco da alguna pista de la actividad (ej: "RESTAURANTE", "FORN", "BAR", "VIPS" -> Diario/Restaurants).
-            - Si el gasto es una suscripción (Netflix, Spotify, Google, etc.), usa 'Entretenimiento'.
-            - Si es un recibo de servicios (Luz, Agua, Teléfono), usa 'Servicios'.
-            - Si es un ingreso, usa 'Ingresos'.
-            - Solo usa 'Otros' como ÚLTIMO RECURSO si el texto es totalmente ilegible o no financiero.
-
-            Devuelve un JSON con:
+            - ANALIZA EL DETALLE: Si el banco dice "Pago con tarjeta" BUSCA el nombre del comercio en el texto.
+            - HIJOS: Si el beneficiario es "Bruno", "Jazz", "Dibujo" o "Piscina", usa 'Hijos'.
+            - TRANSFERENCIAS: Si es una transferencia a "Bruno", "Alicia", "Fili" o "Gabi", usa 'Transferencias'.
+            - DIARIO: Si el comercio es un supermercado (Mercadona, Carrefour, Lidl, etc.) o restaurante, usa 'Diario'.
+            - NO uses 'Otros' si puedes deducir la categoría por la taxonomía.
+            
+            Devuelve un JSON estrictamente con este formato:
             {{
                 "account_name": "Nombre detectado",
                 "transactions": [
@@ -501,7 +494,8 @@ def process_bank_statement(filepath):
                         "subcategoria": "Subcategoría de la taxonomía",
                         "saldo_banco": 0.0,
                         "intent": "regular" | "transfer",
-                        "destinatario": "..."
+                        "destinatario": "Nombre de la cuenta destino si es transfer",
+                        "link_id": "ID único corto (8 chars) para transacciones vinculadas"
                     }}
                 ]
             }}
@@ -511,214 +505,122 @@ def process_bank_statement(filepath):
                 contents=[uploaded_file, prompt]
             )
             data = try_parse_json(response.text)
-            if not data:
-                print(f"ERROR IA PDF: No se pudo parsear JSON de la respuesta.")
-                return {"status": "error", "message": "Respuesta de IA inválida"}
-                
-            transactions = data.get('transactions', [])
-            detected_account = data.get('account_name', detected_account)
-            
-            # Normalize detected account to known accounts
-            if "ETORO" in detected_account.upper(): detected_account = "eToro"
-            elif "GERMAN" in detected_account.upper(): detected_account = "Germán"
-            elif "ELENA" in detected_account.upper() or "ESPOSA" in detected_account.upper(): detected_account = "Esposa"
-            
-            # Assign account to all
-            for t in transactions: t['cuenta'] = detected_account
-            
+            if data:
+                transactions = data.get('transactions', [])
+                detected_account = data.get('account_name', detected_account)
+            else:
+                print(f"ERROR: No se pudo parsear JSON de Gemini para PDF.")
         except Exception as e:
-            print(f"ERROR procesando PDF: {e}")
+            print(f"ERROR PDF: {e}")
             return {"status": "error", "message": f"Error procesando PDF: {str(e)}"}
             
     else: # Excel
-        print(f"DEBUG: Procesando Excel...")
         transactions, error = bank_parser.parse_bbva_excel(filepath)
-        
-        # If native parser fails, try Gemini for the whole Excel content
         if error:
-            print(f"DEBUG: Parser nativo falló ({error}). Reintentando con Gemini...")
             try:
-                # Read all rows as text for Gemini
+                from openpyxl import load_workbook 
                 excel_wb = load_workbook(filepath, data_only=True)
                 sheet = excel_wb.active
                 all_data = []
-                for row in sheet.iter_rows(max_row=100, values_only=True): # Cap at 100 rows for cost/context
+                for row in sheet.iter_rows(max_row=100, values_only=True):
                     if any(row): all_data.append([str(c) if c is not None else "" for c in row])
                 
                 prompt = f"""
-                Analiza este extracto bancario en formato Excel (convertido a JSON).
-                1. Identifica el titular de la cuenta (Germán, eToro, Esposa, Efectivo, o un nombre nuevo).
-                2. Extrae todos los movimientos (fecha YYYY-MM-DD, monto positivo, detalle, tipo Gasto/Ingreso).
-                
+                Analiza este extracto Excel. Identifica el titular y extrae movimientos.
                 Taxonomía: {json.dumps(current_taxonomy, indent=2)}
-                
-                Devuelve un JSON con:
-                {{
-                    "account_name": "Nombre detectado",
-                    "transactions": [
-                        {{
-                            "fecha": "YYYY-MM-DD",
-                            "monto": 0.0,
-                            "detalle": "Concepto",
-                            "tipo": "Gasto" | "Ingreso",
-                            "categoria": "Categoría",
-                            "subcategoria": "Subcategoría",
-                            "saldo_banco": 0.0
-                        }}
-                    ]
-                }}
-                
-                Datos:
-                {json.dumps(all_data)}
+                Datos: {json.dumps(all_data)}
+                Devuelve JSON con 'account_name' y 'transactions'.
                 """
                 response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
                 data = try_parse_json(response.text)
-                if not data:
-                    print(f"ERROR IA Excel Ingest: No se pudo parsear JSON.")
-                    raise ValueError("Respuesta AI inválida")
-                    
-                transactions = data.get('transactions', [])
-                detected_account = data.get('account_name', "Germán")
+                if data:
+                    transactions = data.get('transactions', [])
+                    detected_account = data.get('account_name', detected_account)
             except Exception as e:
-                return {"status": "error", "message": f"Falló parsing de Excel (Nativo y AI): {str(e)}"}
+                print(f"ERROR Excel AI: {e}")
+                return {"status": "error", "message": f"Error Excel AI: {str(e)}"}
         else:
-            # If native parser worked, identify account using Gemini on sample
-            try:
-                excel_wb = load_workbook(filepath, data_only=True)
-                sheet = excel_wb.active
-                sample_data = []
-                for row in sheet.iter_rows(max_row=10, values_only=True):
-                    sample_data.append([str(c) for c in row if c is not None])
-                
-                prompt = f"""
-                Identifica el titular de la cuenta bancaria de estos datos. 
-                Cuentas sugeridas: {', '.join(cfg.get('preferred_accounts', []))}.
-                Si ves un nombre que no está en la lista pero parece ser el titular, devuélvelo.
-                
-                Datos: {json.dumps(sample_data)}
-                
-                Devuelve SOLO el nombre.
-                """
-                response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
-                detected_account = response.text.strip()
-                
-                # Smart normalization
-                ua = detected_account.upper()
-                pref = cfg.get('preferred_accounts', ["Germán", "eToro", "Esposa", "Efectivo"])
-                for p in pref:
-                    if p.upper() in ua:
-                        detected_account = p
-                        break
-            except: pass
-
-        # BBVA gives newest first. We want oldest first for Excel (chronological ledger).
-        transactions.reverse()
-        
-        # 2. Categorize New Transactions (Rules first, then Gemini)
-        results = []
-        new_indices = []
-        for i, t in enumerate(transactions):
-            t['cuenta'] = detected_account
-            exists, status = reconcile_transaction(t, wb)
-            t['status'] = status
-            results.append(t)
-            if status == 'new':
-                new_indices.append(i)
-        
-        if new_indices:
-            print(f"DEBUG: Categorizando {len(new_indices)} transacciones de Excel...")
-            still_to_classify_indices = []
-            for idx in new_indices:
-                t = results[idx]
-                match = apply_rules(t['detalle'], t['tipo'])
-                if match:
-                    results[idx]['categoria'] = match['categoria']
-                    results[idx]['subcategoria'] = match['subcategoria']
+            # Native parser worked, apply rules for categorization
+            for t in transactions:
+                rule = apply_rules(t['detalle'], t['tipo'])
+                if rule:
+                    t['categoria'] = rule['categoria']
+                    t['subcategoria'] = rule['subcategoria']
                 else:
-                    still_to_classify_indices.append(idx)
+                    t['categoria'] = "Otros"
+                    t['subcategoria'] = "Varios"
             
-            if still_to_classify_indices:
-                total_to_classify = len(still_to_classify_indices)
-                chunk_size = 100 # Increased for speed with Gemini 2.5
-                for i in range(0, total_to_classify, chunk_size):
-                    print(f"DEBUG: Progreso IA: {i}/{total_to_classify} movimientos clasificados...")
-                    chunk = still_to_classify_indices[i:i + chunk_size]
-                    to_classify = [{"id": idx, "desc": results[idx]['detalle'], "type": results[idx]['tipo']} for idx in chunk]
-                    
-                    prompt = f"""
-                    Eres un experto contable de ÉLITE. Categoriza estos movimientos bancarios con MÁXIMA EXIGENCIA.
-                    
-                    Taxonomía Permitida:
-                    {json.dumps(current_taxonomy, indent=2)}
-                    
-                    Movimientos a procesar:
-                    {json.dumps(to_classify, indent=2)}
-                    
-                    Cuentas de la casa: {', '.join(cfg.get('preferred_accounts', []))}.
+            # Simple account assignment: Use first account from pref list or "Germán"
+            prefs = current_taxonomy.get('preferred_accounts', ["Germán"])
+            detected_account = prefs[0] if prefs else "Germán"
 
-                    Protocolo de Clasificación (SÍGUELO ESTRICTAMENTE):
-                    1. Analiza el campo 'desc' (Concepto del banco). 
-                    2. Busca coincidencias semánticas en la taxonomía. Ejemplos:
-                       - "AMAZON" -> 'Diario' (si es compra) o 'Entretenimiento' (si es Prime). Default: 'Diario'.
-                       - "RECAUDACION" -> 'Hogar' (si es alquiler/comunidad) o 'Ingresos' (si es cobro).
-                       - "SEGURO" -> 'Seguros' (mapping directo).
-                    3. PROHIBICIÓN DE 'OTROS': Solo puedes usar 'Otros' si tras analizar el texto 3 veces NO encuentras NINGUNA relación con las categorías de arriba. 
-                    4. Si es un 'Ingreso', debe ir obligatoriamente a la categoría 'Ingresos'.
-                    
-                    Devuelve un JSON estrictamente con este formato:
-                    {{"classifications": [{{"id": 0, "categoria": "Categoría", "subcategoria": "Subcategoría", "intent": "regular"|"transfer", "justificacion": "Breve explicación de por qué esta categoría y no 'Otros'"}}]}}
-                    """
-                    try:
-                        response = client.models.generate_content(model=MODEL_NAME, contents=prompt)
-                        data = try_parse_json(response.text)
-                        
-                        if data and 'classifications' in data:
-                            for item in data.get('classifications', []):
-                                idx = item['id']
-                                results[idx]['categoria'] = item['categoria']
-                                results[idx]['subcategoria'] = item['subcategoria']
-                                results[idx]['intent'] = item.get('intent', 'regular')
-                                results[idx]['destinatario'] = item.get('destinatario')
-                                results[idx]['link_id'] = item.get('link_id', str(uuid.uuid4())[:8])
-                        else:
-                            raise ValueError("JSON de clasificación vacío o inválido")
-                    except Exception as e:
-                        print(f"ERROR IA Excel: {e}")
-                        for idx in chunk:
-                            results[idx]['categoria'] = "Otros"
-                            results[idx]['subcategoria'] = "Varios"
-        
-        transactions = results
-
-    # Final cleanup: ensure all have account and status
-    for t in transactions:
-        if 'cuenta' not in t: t['cuenta'] = detected_account
-        if 'status' not in t:
-            exists, status = reconcile_transaction(t, wb)
-            t['status'] = status
-
-    return {"status": "success", "transactions": transactions, "account_detected": detected_account}
+    # Normalize and Reconcile in Bulk
+    results = bulk_reconcile(transactions, detected_account)
+    for t in results:
+        t['cuenta'] = detected_account
+    
+    return {"status": "success", "transactions": results, "account_detected": detected_account}
 
 def process_text(text, force=False, account_override=None):
+    """Processes natural language input using Gemini."""
     analysis = extract_transaction(text)
     if not analysis: return {"status": "error", "message": "Fallo de análisis AI"}
     transactions = analysis.get("transactions", [])
     
-    # Pre-process transactions with intent and account
     for t in transactions:
         t['intent'] = analysis.get('intent')
-        if account_override:
-            t['cuenta'] = account_override
+        if account_override: t['cuenta'] = account_override
     
-    # Fix for batch processing if Gemini returns multiple
     processed = []
     for t in transactions:
         if t.get("intent") == "refund" and not force:
-            candidates = find_candidates(t['categoria'], load_workbook(EXCEL_PATH))
+            candidates = find_candidates(t['categoria'])
             if len(candidates) > 1: return {"status": "needs_disambiguation", "candidates": candidates, "original_intent": analysis}
             elif len(candidates) == 1:
-                t['monto'] = candidates[0]['monto']
-                t['detalle'] = f"Reembolso: {candidates[0]['detalle']}"
+                t['monto'] = float(candidates[0].monto)
+                t['detalle'] = f"Reembolso: {candidates[0].detalle}"
         processed.append(t)
         
-    return append_to_excel(processed, force)[1]
+    return add_transactions(processed, force)[1]
+
+def add_transactions(data_list, force=False):
+    """Adds a list of transactions to the database."""
+    processed_list = expand_transfers(data_list)
+    db_added = 0
+    db = SessionLocal()
+    try:
+        # Optimization: Only reconcile if not force
+        to_save = processed_list
+        if not force:
+            # We don't have a clean way to group by account here reliably in a single bulk_reconcile call
+            # without knowing the accounts upfront, but usually it's one account.
+            # For now, let's just optimize the 'force' case which is the most common for bank ingest.
+            pass 
+        
+        for data in to_save:
+            if not force:
+                exists, status = reconcile_transaction(data)
+                if exists: continue
+            
+            new_date = datetime.datetime.strptime(data['fecha'], '%Y-%m-%d').date() if isinstance(data['fecha'], str) else data['fecha']
+            new_tx = Transaction(
+                fecha=new_date,
+                monto=float(data['monto']),
+                categoria=data['categoria'],
+                subcategoria=data.get('subcategoria', 'Varios'),
+                detalle=data.get('detalle', ''),
+                tipo=data['tipo'],
+                tienda=data.get('tienda', ''),
+                cuenta=data.get('cuenta', 'Germán'),
+                saldo_banco=float(data.get('saldo_banco')) if data.get('saldo_banco') else None,
+                link_id=data.get('link_id', '')
+            )
+            db.add(new_tx)
+            db_added += 1
+        db.commit()
+        return True, {"status": "success", "added": db_added}
+    except Exception as e:
+        db.rollback()
+        return False, {"status": "error", "message": str(e)}
+    finally:
+        db.close()

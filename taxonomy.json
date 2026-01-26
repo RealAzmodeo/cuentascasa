@@ -1,18 +1,24 @@
 {
+    "preferred_accounts": [
+        "German prueba",
+        "Gabi Revolut 55"
+    ],
     "taxonomy": {
-        "Hijos": {
+        "Diario": {
+            "budget": 500,
             "subcategories": [
-                "Piscina",
-                "Jazz",
-                "Dibujo",
-                "Cuota",
-                "Libros",
-                "Cursos",
-                "Otros"
-            ],
-            "budget": 200
+                "Supermercado",
+                "Restaurants",
+                "Zapatillas",
+                "Ropa",
+                "Gabi Beauty",
+                "Peluqueria/Belleza",
+                "Bazar/Librer\u00eda",
+                "Shein/Ali"
+            ]
         },
         "Entretenimiento": {
+            "budget": 150,
             "subcategories": [
                 "Netflix",
                 "Disney",
@@ -26,114 +32,35 @@
                 "Juegos de Mesa",
                 "Museo",
                 "Cine",
-                "Tecnología",
+                "Tecnolog\u00eda",
                 "Open AI",
                 "Google",
                 "Otro"
-            ],
-            "budget": 150
+            ]
         },
-        "Diario": {
+        "Hijos": {
+            "budget": 200,
             "subcategories": [
-                "Supermercado",
-                "Restaurants",
-                "Zapatillas",
-                "Ropa",
-                "Gabi Beauty",
-                "Peluqueria/Belleza",
-                "Bazar/Librería",
-                "Shein/Ali"
-            ],
-            "budget": 500
-        },
-        "Otros": {
-            "subcategories": [
-                "Regalos",
-                "Envios",
-                "Donaciones",
-                "Bizum"
-            ],
-            "budget": 100
-        },
-        "Salud": {
-            "subcategories": [
-                "Farmacia",
-                "Psicólogo",
-                "Gimnasio"
-            ],
-            "budget": 150
+                "Piscina",
+                "Jazz",
+                "Dibujo",
+                "Cuota",
+                "Libros",
+                "Cursos",
+                "Otros"
+            ]
         },
         "Hogar": {
+            "budget": 1200,
             "subcategories": [
                 "Alquiler",
                 "Cosas para la casa",
                 "Mantenimiento casa",
                 "Muebles"
-            ],
-            "budget": 1200
-        },
-        "Seguros": {
-            "subcategories": [
-                "Auto",
-                "Salud",
-                "Hogar",
-                "Vida"
-            ],
-            "budget": 100
-        },
-        "Tranferencias": {
-            "subcategories": [
-                "Bruno",
-                "Alicia",
-                "Fili",
-                "Gabi"
-            ],
-            "budget": 0
-        },
-        "Transporte": {
-            "subcategories": [
-                "Combustible",
-                "Parking",
-                "Cosas auto",
-                "Cuota del auto",
-                "Taller",
-                "Peaje",
-                "Taxi",
-                "Multas",
-                "ITV",
-                "Transporte Publico"
-            ],
-            "budget": 200
-        },
-        "Viajes": {
-            "subcategories": [
-                "Avion",
-                "Hotel",
-                "Comida",
-                "Transporte",
-                "Entretenimiento",
-                "Otro"
-            ],
-            "budget": 0
-        },
-        "Servicios": {
-            "subcategories": [
-                "Telefono e Internet",
-                "Electricidad",
-                "Gas",
-                "Agua",
-                "Residuos"
-            ],
-            "budget": 250
-        },
-        "Other": {
-            "subcategories": [
-                "Ahorro Revolut",
-                "Transferencia"
-            ],
-            "budget": 0
+            ]
         },
         "Ingresos": {
+            "budget": 0,
             "subcategories": [
                 "Salario",
                 "Obra social",
@@ -145,226 +72,153 @@
                 "Ventas",
                 "Reembolso",
                 "Bizums",
-                "Retiro inversión",
-                "Préstamo Jorge",
+                "Retiro inversi\u00f3n",
+                "Pr\u00e9stamo Jorge",
                 "Otros"
-            ],
-            "budget": 0
+            ]
+        },
+        "Otros": {
+            "budget": 100,
+            "subcategories": [
+                "Regalos",
+                "Envios",
+                "Donaciones",
+                "Bizum",
+                "Ahorro Revolut",
+                "Transferencia"
+            ]
+        },
+        "Salud": {
+            "budget": 150,
+            "subcategories": [
+                "Farmacia",
+                "Psic\u00f3logo",
+                "Gimnasio"
+            ]
+        },
+        "Seguros": {
+            "budget": 100,
+            "subcategories": [
+                "Auto",
+                "Salud",
+                "Hogar",
+                "Vida"
+            ]
+        },
+        "Servicios": {
+            "budget": 250,
+            "subcategories": [
+                "Telefono e Internet",
+                "Electricidad",
+                "Gas",
+                "Agua",
+                "Residuos"
+            ]
+        },
+        "Transferencias": {
+            "budget": 0,
+            "subcategories": [
+                "Bruno",
+                "Alicia",
+                "Fili",
+                "Gabi"
+            ]
+        },
+        "Transporte": {
+            "budget": 200,
+            "subcategories": [
+                "Combustible",
+                "Parking",
+                "Cosas auto",
+                "Cuota del auto",
+                "Taller",
+                "Peaje",
+                "Taxi",
+                "Multas",
+                "ITV",
+                "Transporte Publico"
+            ]
+        },
+        "Viajes": {
+            "budget": 0,
+            "subcategories": [
+                "Avion",
+                "Hotel",
+                "Comida",
+                "Transporte",
+                "Entretenimiento",
+                "Otro"
+            ]
         }
     },
-    "preferred_accounts": [
-        "Germán",
-        "eToro",
-        "Esposa",
-        "Efectivo"
-    ],
+    "account_details": {
+        "Gabi": {
+            "type": "bancario",
+            "currency": "EUR"
+        },
+        "German prueba": {
+            "type": "bancario",
+            "currency": "EUR"
+        },
+        "Gabi Revolut 55": {
+            "type": "bancario",
+            "currency": "EUR"
+        }
+    },
     "classification_rules": [
         {
             "pattern": "MERCADONA",
             "category": "Diario",
-            "subcategory": "Supermercado"
+            "subcategory": "Supermercado",
+            "type": "Gasto"
         },
         {
-            "pattern": "GOOGLE",
-            "category": "Entretenimiento",
-            "subcategory": "Google"
+            "pattern": "LIDL",
+            "category": "Diario",
+            "subcategory": "Supermercado",
+            "type": "Gasto"
+        },
+        {
+            "pattern": "CARREFOUR",
+            "category": "Diario",
+            "subcategory": "Supermercado",
+            "type": "Gasto"
         },
         {
             "pattern": "NETFLIX",
             "category": "Entretenimiento",
-            "subcategory": "Netflix"
+            "subcategory": "Netflix",
+            "type": "Gasto"
         },
         {
             "pattern": "DISNEY",
             "category": "Entretenimiento",
-            "subcategory": "Disney"
+            "subcategory": "Disney",
+            "type": "Gasto"
         },
         {
             "pattern": "HBO",
             "category": "Entretenimiento",
-            "subcategory": "HBO"
-        },
-        {
-            "pattern": "AMAZON {3}PRIME",
-            "category": "Entretenimiento",
-            "subcategory": "Amazon Prime"
-        },
-        {
-            "pattern": "XBOX",
-            "category": "Entretenimiento",
-            "subcategory": "Xbox"
-        },
-        {
-            "pattern": "OPENAI",
-            "category": "Entretenimiento",
-            "subcategory": "Open AI"
-        },
-        {
-            "pattern": "SPOTIFY",
-            "category": "Entretenimiento",
-            "subcategory": "Otro"
-        },
-        {
-            "pattern": "NUROIL",
-            "category": "Transporte",
-            "subcategory": "Combustible"
-        },
-        {
-            "pattern": "CEPSA",
-            "category": "Transporte",
-            "subcategory": "Combustible"
-        },
-        {
-            "pattern": "REPSOL",
-            "category": "Transporte",
-            "subcategory": "Combustible"
-        },
-        {
-            "pattern": "PARKING",
-            "category": "Transporte",
-            "subcategory": "Parking"
-        },
-        {
-            "pattern": "PEAJE",
-            "category": "Transporte",
-            "subcategory": "Peaje"
-        },
-        {
-            "pattern": "TAXI",
-            "category": "Transporte",
-            "subcategory": "Taxi"
-        },
-        {
-            "pattern": "FARMACIA",
-            "category": "Salud",
-            "subcategory": "Farmacia"
-        },
-        {
-            "pattern": "FCIA.",
-            "category": "Salud",
-            "subcategory": "Farmacia"
-        },
-        {
-            "pattern": "PSICOLOGO",
-            "category": "Salud",
-            "subcategory": "Psicólogo"
-        },
-        {
-            "pattern": "GYM",
-            "category": "Salud",
-            "subcategory": "Gimnasio"
-        },
-        {
-            "pattern": "GIMNASIO",
-            "category": "Salud",
-            "subcategory": "Gimnasio"
-        },
-        {
-            "pattern": "VODAFONE",
-            "category": "Servicios",
-            "subcategory": "Telefono e Internet"
-        },
-        {
-            "pattern": "MOVISTAR",
-            "category": "Servicios",
-            "subcategory": "Telefono e Internet"
-        },
-        {
-            "pattern": "DIGI",
-            "category": "Servicios",
-            "subcategory": "Telefono e Internet"
-        },
-        {
-            "pattern": "ENDESA",
-            "category": "Servicios",
-            "subcategory": "Electricidad"
-        },
-        {
-            "pattern": "NATURGY",
-            "category": "Servicios",
-            "subcategory": "Gas"
-        },
-        {
-            "pattern": "AGUAS",
-            "category": "Servicios",
-            "subcategory": "Agua"
-        },
-        {
-            "pattern": "SERVEIS AMBIENTALS",
-            "category": "Servicios",
-            "subcategory": "Residuos"
-        },
-        {
-            "pattern": "HIPOTECA",
-            "category": "Hogar",
-            "subcategory": "Alquiler"
-        },
-        {
-            "pattern": "ALQUILER",
-            "category": "Hogar",
-            "subcategory": "Alquiler"
-        },
-        {
-            "pattern": "MACXIPA",
-            "category": "Diario",
-            "subcategory": "Restaurants"
-        },
-        {
-            "pattern": "FORN DE PA",
-            "category": "Diario",
-            "subcategory": "Restaurants"
-        },
-        {
-            "pattern": "RESTAURANT",
-            "category": "Diario",
-            "subcategory": "Restaurants"
-        },
-        {
-            "pattern": "BAR",
-            "category": "Diario",
-            "subcategory": "Restaurants"
-        },
-        {
-            "pattern": "BIZUM",
-            "category": "Otros",
-            "subcategory": "Bizum",
+            "subcategory": "HBO",
             "type": "Gasto"
+        },
+        {
+            "pattern": "NOMINA",
+            "category": "Ingresos",
+            "subcategory": "Salario",
+            "type": "Ingreso"
+        },
+        {
+            "pattern": "SALARIO",
+            "category": "Ingresos",
+            "subcategory": "Salario",
+            "type": "Ingreso"
         },
         {
             "pattern": "BIZUM",
             "category": "Ingresos",
             "subcategory": "Bizums",
             "type": "Ingreso"
-        },
-        {
-            "pattern": "NOMINA",
-            "category": "Ingresos",
-            "subcategory": "Salario"
-        },
-        {
-            "pattern": "SALARIO",
-            "category": "Ingresos",
-            "subcategory": "Salario"
-        },
-        {
-            "pattern": "TRP REDONDEO",
-            "category": "Other",
-            "subcategory": "Ahorro Revolut"
-        },
-        {
-            "pattern": "ZARA",
-            "category": "Diario",
-            "subcategory": "Ropa"
-        },
-        {
-            "pattern": "RIP CURL",
-            "category": "Diario",
-            "subcategory": "Ropa"
-        },
-        {
-            "pattern": "PISCINA",
-            "category": "Hijos",
-            "subcategory": "Piscina"
         }
     ]
 }

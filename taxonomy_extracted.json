@@ -1,0 +1,135 @@
+{
+    "Hijos": [
+        "Piscina",
+        "Jazz",
+        "Dibujo",
+        "Cursos",
+        "Regalos compa\u00f1eros",
+        "Comedor escolar",
+        "Patri",
+        "Material y libros",
+        "Escuela de verano",
+        "Juguetes",
+        "Stich",
+        "Salidas y otros"
+    ],
+    "Deudas": [
+        "Tarjeta Credito",
+        "George",
+        "Fraccionamiento de gastos",
+        "Deuda Impuestos",
+        "Mantenimiento TC",
+        "Otros",
+        "Inversiones",
+        "Retiro de Efectivo",
+        "Scopely"
+    ],
+    "Educaci\u00f3n": [
+        "Cuota",
+        "Libros",
+        "Cursos",
+        "Otros"
+    ],
+    "Entretenimiento": [
+        "Netflix",
+        "Disney",
+        "HBO",
+        "Amazon Prime",
+        "Youtube",
+        "Xbox",
+        "Libros",
+        "Videojuegos",
+        "Recitales",
+        "Juegos de Mesa",
+        "Museo",
+        "Cine",
+        "Tecnolog\u00eda",
+        "Open AI",
+        "Google",
+        "Otro"
+    ],
+    "Diario": [
+        "Supermercado",
+        "Restaurants",
+        "Zapatillas",
+        "Ropa",
+        "Gabi Beauty",
+        "Peluqueria/Belleza",
+        "Bazar/Librer\u00eda",
+        "Shein/Ali"
+    ],
+    "Otros": [
+        "Regalos",
+        "Envios",
+        "Donaciones",
+        "Bizum"
+    ],
+    "Salud": [
+        "Farmacia",
+        "Psic\u00f3logo",
+        "Gimnasio"
+    ],
+    "Hogar": [
+        "Alquiler",
+        "Cosas para la casa",
+        "Mantenimiento casa",
+        "Muebles"
+    ],
+    "Seguros": [
+        "Auto",
+        "Salud",
+        "Hogar",
+        "Vida"
+    ],
+    "Tranferencias": [
+        "Bruno",
+        "Alicia",
+        "Fili",
+        "Gabi"
+    ],
+    "Transporte": [
+        "Combustible",
+        "Parking",
+        "Cosas auto",
+        "Cuota del auto",
+        "Taller",
+        "Peaje",
+        "Taxi",
+        "Multas",
+        "ITV",
+        "Transporte Publico"
+    ],
+    "Viajes": [
+        "Avion",
+        "Hotel",
+        "Comida",
+        "Transporte",
+        "Entretenimiento",
+        "Otro"
+    ],
+    "Servicios": [
+        "Telefono e Internet",
+        "Electricidad",
+        "Gas",
+        "Agua",
+        "Residuos"
+    ],
+    "Other": [
+        "Ahorro Revolut",
+        "Transferencia"
+    ],
+    "Ingresos": [
+        "Obra social",
+        "Edenred",
+        "Bonus",
+        "Comisiones",
+        "Aguinaldo",
+        "Hacienda",
+        "Ventas",
+        "Reembolso",
+        "Bizums",
+        "Retiro inversi\u00f3n",
+        "Pr\u00e9stamo Jorge",
+        "Otros"
+    ]
+}
