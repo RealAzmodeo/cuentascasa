@@ -6,3 +6,13 @@ __pycache__/
 .gemini/
 *.pyc
 .DS_Store
+
+# React Native / Expo
+node_modules/
+.expo/
+.gradle_cache/
+android/app/build/
+android/.gradle/
+*.txt
+bundle_*.txt
+build_*.txt

@@ -1111,3 +1111,61 @@
 2026-01-26 22:57:31.882950 - DB: get_analytics started
 2026-01-26 22:57:32.368318 - DB: get_analytics fetching detailed transactions...
 2026-01-26 22:57:32.863834 - DB: get_analytics fetching detailed transactions...
+2026-01-27 11:34:00.039655 - Starting init_db...
+2026-01-27 11:34:02.752349 - init_db success.
+2026-01-27 11:35:21.912738 - EP: /config started
+2026-01-27 11:35:21.913635 - EP: /summary started
+2026-01-27 11:35:21.913779 - DB: get_analytics started
+2026-01-27 11:35:21.914575 - DB: get_current_summary started
+2026-01-27 11:35:21.914628 - EP: /config finished
+2026-01-27 11:35:21.915092 - DB: get_current_summary aggregate query start
+2026-01-27 11:35:22.400353 - DB: get_analytics started
+2026-01-27 11:35:22.905205 - EP: /summary finished
+2026-01-27 11:35:22.907582 - EP: /summary started
+2026-01-27 11:35:22.907888 - DB: get_current_summary started
+2026-01-27 11:35:22.908107 - DB: get_current_summary aggregate query start
+2026-01-27 11:35:23.376916 - EP: /summary finished
+2026-01-27 11:35:38.951687 - EP: Processing bank file: account-statement_2025-10-01_2026-01-26_es-es_884d7c.xlsx
+2026-01-27 11:35:39.523329 - EP: Bank processing finished in 0.57s
+2026-01-27 11:35:46.410469 - EP: /ingest_data started
+2026-01-27 11:35:47.396280 - EP: /ingest_data finished: {'status': 'success', 'added': 643}
+2026-01-27 11:35:48.636562 - EP: /summary started
+2026-01-27 11:35:48.636963 - DB: get_analytics started
+2026-01-27 11:35:48.637016 - DB: get_current_summary started
+2026-01-27 11:35:48.637604 - DB: get_current_summary aggregate query start
+2026-01-27 11:35:48.963996 - DB: get_analytics fetching detailed transactions...
+2026-01-27 11:35:49.099642 - EP: /summary finished
+2026-01-27 11:36:12.187765 - EP: Processing bank file: 2026Y-01M-25D-10_15_21-Últimos movimientos.xlsx
+2026-01-27 11:36:14.619540 - EP: Bank processing finished in 2.43s
+2026-01-27 11:36:28.189604 - EP: /ingest_data started
+2026-01-27 11:36:29.588549 - EP: /ingest_data finished: {'status': 'success', 'added': 1120}
+2026-01-27 11:36:30.753821 - EP: /summary started
+2026-01-27 11:36:30.753880 - DB: get_analytics started
+2026-01-27 11:36:30.754521 - DB: get_current_summary started
+2026-01-27 11:36:30.754700 - DB: get_current_summary aggregate query start
+2026-01-27 11:36:31.187264 - EP: /summary finished
+2026-01-27 11:36:31.219356 - DB: get_analytics fetching detailed transactions...
+2026-01-27 11:36:46.106917 - EP: /summary started
+2026-01-27 11:36:46.107840 - DB: get_analytics started
+2026-01-27 11:36:46.108464 - DB: get_current_summary started
+2026-01-27 11:36:46.108667 - DB: get_current_summary aggregate query start
+2026-01-27 11:36:46.543152 - DB: get_analytics fetching detailed transactions...
+2026-01-27 11:36:46.570289 - EP: /summary finished
+2026-01-27 11:36:54.143091 - EP: /summary started
+2026-01-27 11:36:54.143547 - DB: get_analytics started
+2026-01-27 11:36:54.143580 - DB: get_current_summary started
+2026-01-27 11:36:54.144189 - DB: get_current_summary aggregate query start
+2026-01-27 11:36:54.491483 - DB: get_analytics fetching detailed transactions...
+2026-01-27 11:36:54.576100 - EP: /summary finished
+2026-01-27 11:36:56.266170 - EP: /summary started
+2026-01-27 11:36:56.266451 - DB: get_current_summary started
+2026-01-27 11:36:56.266622 - DB: get_current_summary aggregate query start
+2026-01-27 11:36:56.267260 - DB: get_analytics started
+2026-01-27 11:36:56.730602 - EP: /summary finished
+2026-01-27 11:36:56.766712 - DB: get_analytics fetching detailed transactions...
+2026-01-27 11:36:57.831057 - EP: /summary started
+2026-01-27 11:36:57.831483 - DB: get_analytics started
+2026-01-27 11:36:57.831518 - DB: get_current_summary started
+2026-01-27 11:36:57.832105 - DB: get_current_summary aggregate query start
+2026-01-27 11:36:58.156808 - DB: get_analytics fetching detailed transactions...
+2026-01-27 11:36:58.295438 - EP: /summary finished
