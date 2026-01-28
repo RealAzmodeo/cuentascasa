@@ -1,15 +1,17 @@
 export const theme = {
     colors: {
-        vhsBlue: '#0A0E22',
-        vhsPurple: '#2D1B4E',
-        vhsPink: '#FF007F',
-        vhsCyan: '#00F3FF',
-        vhsOrange: '#FF8A00',
-        vhsRed: '#FF3131',
-        textWhite: '#FFFFFF',
         textCharcoal: '#1A1A1A',
-        bgLight: '#F8F9FA',
-        cardGray: '#E9ECEF',
-        successGreen: '#39FF14',
+        textMuted: '#6C757D',
+        vhsRed: '#FF3131',
+        sageGreen: '#4CAF50',
+        bgCream: '#FDFCF0',
+        retroOrange: '#FF8A00',
+        border: '#E9ECEF',
+        slateBlue: '#4A5568',
+        white: '#FFFFFF',
+    },
+    radius: {
+        md: 12,
+        lg: 20,
     }
 };

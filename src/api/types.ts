@@ -1,28 +1,36 @@
 export interface Config {
-    current_month: string;
-    months: string[];
+    taxonomy: Record<string, { budget: number }>;
 }
 
 export interface Transaction {
     id: string;
-    fecha: string;
-    concepto: string;
-    importe: number;
+    tienda?: string;
+    detalle: string;
+    monto: number;
     categoria: string;
     cuenta: string;
-    tipo: 'gasto' | 'ingreso';
+    tipo: string;
 }
 
-export interface Summary {
-    total_ingresos: number;
-    total_gastos: number;
-    balance: number;
-    presupuesto_total: number;
-    gastos_por_categoria: Record<string, number>;
-    presupuestos: Record<string, number>;
+export interface MonthData {
+    income: number;
+    total: number;
+    categories: Record<string, number>;
+    transactions: Transaction[];
+}
+
+export interface HistoryItem {
+    month: string;
+    total: number;
+    growth: number;
 }
 
 export interface Analytics {
-    monthly_trend: { month: string, ingresos: number, gastos: number }[];
-    categorized_spending: { category: string, amount: number }[];
+    current_month_key: string;
+    months: Record<string, MonthData>;
+    history: HistoryItem[];
+}
+
+export interface Summary {
+    savings: number;
 }

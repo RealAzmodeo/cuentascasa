@@ -27,7 +27,7 @@
 if "%OS%"=="Windows_NT" setlocal
 
 @rem Add local gradle cache to avoid accent issues
-set GRADLE_USER_HOME=%~dp0..\.gradle_cache
+set GRADLE_USER_HOME=D:\.gc
 
 @rem Set JAVA_HOME to short path to avoid space issues
 set JAVA_HOME=C:\PROGRA~1\Android\ANDROI~1\jbr
